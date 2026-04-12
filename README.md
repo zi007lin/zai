@@ -61,6 +61,35 @@ The controller decides: *which agent, which model, which repo, which gate.* Suba
 
 ---
 
+## ZAI vs "Guardrails"
+
+Most AI teams are building guardrails. ZAI is building governance.
+
+| Guardrails Thinking | ZAI Governance |
+|---------------------|----------------|
+| Zapier workflows | Kafka + Cloudflare event streams |
+| Manual approvals | Programmatic governance (SDD) |
+| Monitoring | Observability + event logs + replay |
+| Prototype-first | Production-grade architecture from day 1 |
+| Safety | Anti-fragile system design |
+
+**Guardrails treat AI like a tool that needs limits.**
+**ZAI treats AI like a system that needs governance + incentives + auditability.**
+
+### The governance stack
+
+```
+Event sourcing    — every spec, every decision, every deploy is logged
+CQRS              — read and write paths are separated
+Identity          — every action is tied to a verified actor
+ZZV Chain         — immutable audit trail, append-only
+SDD               — the spec is the contract, not the chat
+```
+
+Simple interface. Production-grade architecture underneath.
+
+---
+
 ## RGB Color System
 
 ZAI uses a three-channel signal convention across logs, dashboards, and PR checks:
