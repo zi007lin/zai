@@ -20,12 +20,24 @@ export default function HomePage({ onNavigate }: Props) {
   }, [ambiguity, spec]);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-20">
-      <section className="text-center">
-        <h1 className="text-5xl md:text-6xl font-bold tracking-tight">
+    <>
+      {/* Hero — fills the viewport below the 56px TopBar */}
+      <section
+        className="flex flex-col items-center justify-center text-center px-6"
+        style={{ minHeight: "calc(100dvh - 56px)" }}
+      >
+        <h1
+          className="font-bold tracking-tight leading-[1.05] max-w-[18ch]"
+          style={{ fontSize: "clamp(2.25rem, 6vw, 5rem)" }}
+        >
           {t("hero.title")}
         </h1>
-        <p className="mt-5 text-xl text-neutral-400">{t("hero.tagline")}</p>
+        <p
+          className="mt-4 text-neutral-400 max-w-[32ch]"
+          style={{ fontSize: "clamp(1rem, 2.2vw, 1.5rem)" }}
+        >
+          {t("hero.tagline")}
+        </p>
         <p className="mt-3 text-sm text-neutral-500">
           {t("hero.by")}{" "}
           <a
@@ -38,14 +50,16 @@ export default function HomePage({ onNavigate }: Props) {
           </a>
         </p>
 
-        <div className="mt-10 flex justify-center gap-3">
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none sm:w-auto">
           <button
+            type="button"
             onClick={() => onNavigate("app")}
             className="px-5 py-2.5 rounded-md bg-white text-neutral-900 font-medium hover:bg-neutral-200 transition-colors"
           >
             {t("hero.cta_try")}
           </button>
           <button
+            type="button"
             onClick={() => onNavigate("pricing")}
             className="px-5 py-2.5 rounded-md border border-neutral-700 text-white hover:bg-neutral-900 transition-colors"
           >
@@ -54,9 +68,12 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </section>
 
-      <section className="mt-24 grid md:grid-cols-2 gap-8 items-center">
+      {/* RGB demo — below the fold */}
+      <section className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center">
         <div>
-          <h2 className="text-2xl font-semibold">{t("demo.title")}</h2>
+          <h2 className="text-2xl md:text-3xl font-semibold">
+            {t("demo.title")}
+          </h2>
           <p className="mt-3 text-neutral-400">{t("demo.description")}</p>
 
           <div className="mt-6 space-y-4">
@@ -91,12 +108,12 @@ export default function HomePage({ onNavigate }: Props) {
 
         <div className="flex items-center justify-center">
           <div
-            className="w-64 h-64 rounded-2xl border border-neutral-800 transition-colors"
+            className="w-56 h-56 md:w-64 md:h-64 rounded-2xl border border-neutral-800 transition-colors"
             style={{ background: color }}
             aria-label={`RGB preview ${color}`}
           />
         </div>
       </section>
-    </div>
+    </>
   );
 }
