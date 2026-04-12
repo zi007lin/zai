@@ -1,6 +1,8 @@
 # ZAI — Zero Ambiguity Intelligence
 
-**The engine of Spec Driven Development (SDD) by High Tech United.**
+**The engine of Spec Driven Development (SDD) by [High Tech United](https://htu.io).**
+
+[![High Tech United](https://htu.io/logo.png)](https://htu.io)
 
 ZAI turns natural-language intent into verifiable, auditable software. Every spec, every commit, every deploy is anchored — no ambiguity, no drift, no ghosts in the pipeline.
 
