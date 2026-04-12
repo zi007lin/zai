@@ -13,7 +13,7 @@ for (const device of devices) {
     await page.setViewportSize({ width: device.width, height: device.height });
     await page.goto("/");
 
-    const headline = page.getByRole("heading", { name: /Zero Ambiguity/i });
+    const headline = page.locator("main h1").first();
     await expect(headline).toBeVisible();
     const headlineBox = await headline.boundingBox();
     expect(headlineBox).not.toBeNull();
