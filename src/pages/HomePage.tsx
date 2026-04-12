@@ -68,17 +68,35 @@ export default function HomePage({ onNavigate }: Props) {
         </div>
       </section>
 
-      {/* RGB demo — below the fold */}
-      <section className="max-w-6xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-10 items-center">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-semibold">
+      {/* RGB demo — full-section dynamic background driven by the sliders */}
+      <section
+        className="relative overflow-hidden transition-colors duration-300"
+        style={{ backgroundColor: color }}
+        aria-label={`ZAI ambiguity visualizer, current RGB ${color}`}
+      >
+        {/* Dark overlay keeps text legible at every slider position */}
+        <div className="absolute inset-0 bg-black/45 pointer-events-none" />
+
+        <div className="relative max-w-3xl mx-auto px-6 py-24 text-white">
+          <h2
+            className="font-bold tracking-tight"
+            style={{ fontSize: "clamp(2.5rem, 5vw, 3.25rem)", lineHeight: 1.15 }}
+          >
             {t("demo.title")}
           </h2>
-          <p className="mt-3 text-neutral-400">{t("demo.description")}</p>
+          <p
+            className="mt-5 text-neutral-100"
+            style={{ fontSize: "1.125rem", lineHeight: 1.7 }}
+          >
+            {t("demo.description")}
+          </p>
 
-          <div className="mt-6 space-y-4">
+          <div className="mt-10 space-y-6">
             <label className="block">
-              <span className="text-sm text-neutral-400">
+              <span
+                className="text-neutral-100"
+                style={{ fontSize: "1rem" }}
+              >
                 {t("demo.ambiguity")}: {ambiguity}%
               </span>
               <input
@@ -91,7 +109,10 @@ export default function HomePage({ onNavigate }: Props) {
               />
             </label>
             <label className="block">
-              <span className="text-sm text-neutral-400">
+              <span
+                className="text-neutral-100"
+                style={{ fontSize: "1rem" }}
+              >
                 {t("demo.spec_coverage")}: {spec}%
               </span>
               <input
@@ -104,14 +125,6 @@ export default function HomePage({ onNavigate }: Props) {
               />
             </label>
           </div>
-        </div>
-
-        <div className="flex items-center justify-center">
-          <div
-            className="w-56 h-56 md:w-64 md:h-64 rounded-2xl border border-neutral-800 transition-colors"
-            style={{ background: color }}
-            aria-label={`RGB preview ${color}`}
-          />
         </div>
       </section>
     </>
