@@ -1,1 +1,10 @@
 .claude/commands/
+node_modules
+dist
+dist-ssr
+.wrangler
+.env
+.env.local
+.DS_Store
+*.log
+*.tsbuildinfo
