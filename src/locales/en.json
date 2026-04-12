@@ -1,0 +1,47 @@
+{
+  "nav": {
+    "home": "Home",
+    "app": "App",
+    "pricing": "Pricing"
+  },
+  "hero": {
+    "title": "Zero Ambiguity Intelligence",
+    "tagline": "The engine of Spec Driven Development",
+    "by": "By",
+    "cta_try": "Try ZAI",
+    "cta_pricing": "See pricing"
+  },
+  "demo": {
+    "title": "From ambiguity to spec — in color",
+    "description": "Every prompt carries some ambiguity. ZAI measures it, and Spec Driven Development closes the gap. Move the sliders to see how ambiguity and spec coverage blend into a single signal.",
+    "ambiguity": "Ambiguity",
+    "spec_coverage": "Spec coverage"
+  },
+  "app": {
+    "title": "ZAI App",
+    "coming_soon": "Coming soon. The ZAI spec generator and translation round-trip are in active development."
+  },
+  "pricing": {
+    "title": "Editions",
+    "subtitle": "Pick the edition that matches your spec surface area.",
+    "free": {
+      "name": "Free",
+      "description": "Single project, basic spec generation, community support."
+    },
+    "pro": {
+      "name": "Pro",
+      "description": "Unlimited projects, translation round-trip, RGB score, email support."
+    },
+    "pro_plus": {
+      "name": "Pro+",
+      "description": "Team workspaces, private models, priority support."
+    },
+    "enterprise": {
+      "name": "Enterprise",
+      "description": "SSO, audit logs, on-prem, named account manager."
+    }
+  },
+  "footer": {
+    "built_on": "Built on"
+  }
+}
