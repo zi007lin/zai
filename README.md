@@ -2,7 +2,9 @@
 
 **The engine of Spec Driven Development (SDD) by [High Tech United](https://htu.io).**
 
-[![High Tech United](https://htu.io/logo.png)](https://htu.io)
+<div align="center">
+  <a href="https://htu.io"><img src="https://htu.io/logo.png" width="600" alt="ZAI by High Tech United"/></a>
+</div>
 
 ZAI turns natural-language intent into verifiable, auditable software. Every spec, every commit, every deploy is anchored — no ambiguity, no drift, no ghosts in the pipeline.
 
