@@ -5,8 +5,8 @@
     "pricing": "Pricing"
   },
   "hero": {
-    "title": "Zero Ambiguity Intelligence",
-    "tagline": "The engine of Spec Driven Development",
+    "brand": "Zero Ambiguity Intelligence",
+    "title": "Most AI tools give you guardrails. ZAI gives you governance — a complete audit trail from human intent to deployed code, with nothing lost in translation.",
     "by": "By",
     "cta_try": "Try ZAI",
     "cta_pricing": "See pricing"

@@ -26,19 +26,16 @@ export default function HomePage({ onNavigate }: Props) {
         className="flex flex-col items-center justify-center text-center px-6"
         style={{ minHeight: "calc(100dvh - 56px)" }}
       >
+        <span className="text-xs sm:text-sm tracking-[0.25em] uppercase text-neutral-500">
+          {t("hero.brand")}
+        </span>
         <h1
-          className="font-bold tracking-tight leading-[1.05] max-w-[18ch]"
-          style={{ fontSize: "clamp(2.25rem, 6vw, 5rem)" }}
+          className="mt-4 font-bold tracking-tight leading-[1.15] max-w-[32ch]"
+          style={{ fontSize: "clamp(1.5rem, 4vw, 2.5rem)" }}
         >
           {t("hero.title")}
         </h1>
-        <p
-          className="mt-4 text-neutral-400 max-w-[32ch]"
-          style={{ fontSize: "clamp(1rem, 2.2vw, 1.5rem)" }}
-        >
-          {t("hero.tagline")}
-        </p>
-        <p className="mt-3 text-sm text-neutral-500">
+        <p className="mt-5 text-sm text-neutral-500">
           {t("hero.by")}{" "}
           <a
             href="https://htu.io"
