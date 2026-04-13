@@ -67,6 +67,7 @@ Sensitive operational details are NEVER committed to public repos:
 - Command inventories or toolchain invocations
 - Symlink structures pointing to private repos
 - Internal module paths or test invocations
+- Public IPs, hostnames, or server or provider identifiers for internal infrastructure
 
 These belong in the private layer only. Violations are reverted immediately
 and the committer must run `git filter-repo` to scrub history (coordinate
