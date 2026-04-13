@@ -1,4 +1,22 @@
-import { SECTION_LABELS, SECTION_ORDER } from "../lib/scoreSpec";
+const SECTION_LABELS: Record<string, string> = {
+  intent: "Intent",
+  decision_tree: "Decision Tree",
+  draft_of_thoughts: "Draft-of-thoughts",
+  final_spec: "Final Spec",
+  game_theory: "Game Theory Review",
+  migration_summary: "Subject Migration Summary",
+  files_list: "Files list",
+};
+
+const SECTION_ORDER: string[] = [
+  "intent",
+  "decision_tree",
+  "draft_of_thoughts",
+  "final_spec",
+  "game_theory",
+  "migration_summary",
+  "files_list",
+];
 
 const EXAMPLE = {
   filename: "2026-04-12__feat__zai-hero-tagline-governance.md",
@@ -30,7 +48,7 @@ const EXAMPLE = {
     game_theory: "PASS",
     migration_summary: "PASS",
     files_list: "PASS",
-  } as const,
+  } as Record<string, string>,
   score: "7/7",
   gates: ["ZZV Chain anchoring status before merge"],
 };

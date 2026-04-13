@@ -31,6 +31,7 @@ function buildScoredSpec(
   lines.push("## ZAI Spec Score");
   lines.push("");
   lines.push(`- **Rubric version:** ${result.rubric_version}`);
+  lines.push(`- **Spec type:** ${result.spec_type}`);
   lines.push(`- **Evaluated at:** ${result.evaluated_at}`);
   lines.push(`- **Score:** ${result.score}`);
   lines.push(`- **Passed:** ${result.passed ? "YES" : "NO"}`);
@@ -60,7 +61,7 @@ export default function AppPage() {
   const handleFile = useCallback((name: string, contents: string) => {
     setFilename(name);
     setMarkdown(contents);
-    setResult(scoreSpec(contents));
+    setResult(scoreSpec(contents, name));
   }, []);
 
   const handleDownloadTemplate = useCallback(() => {
