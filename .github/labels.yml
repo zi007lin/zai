@@ -25,3 +25,6 @@
 - name: refactor
   color: D3D1C7
   description: Code restructure, no behavior change
+- name: needs-approval
+  color: FBCA04
+  description: Non-trivial spec — awaiting daniel-silvers approval
