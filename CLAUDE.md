@@ -16,19 +16,25 @@ ZAI — Zero Ambiguity Intelligence. The engine of Spec Driven Development by Hi
 Before executing any `impl` or `implw` command, ZiLin-Dev MUST:
 
 1. Read the spec file
-2. Search for the pattern: `<!-- zilin-bs:score`
-3. If the block is absent → STOP. Emit exactly:
+2. Search for the pattern: `## ZAI Spec Score` (exact heading, case-sensitive)
+3. If the heading is absent → STOP. Emit exactly:
    `needs_input: score this spec at dev.zai.htu.io/app first, then re-download the .scored.md`
-4. If the block is present, parse the JSON and check `"passed": true`
-5. If `passed` is false or missing → STOP. Emit exactly:
+4. If the heading is present, check that the section contains a line
+   matching exactly: `- **Passed:** YES`
+   If that line is absent or reads `- **Passed:** NO` → STOP. Emit exactly:
    `needs_input: spec score is not passing — fix failing sections and re-score before impl`
-6. If `passed` is true → proceed with impl normally
+5. If the `- **Passed:** YES` line is present → proceed with impl normally
 
 No exceptions. No overrides. No "I'll proceed anyway since the intent is clear."
 A spec without a passing score block is not a valid impl input.
 
 The correct workflow is:
   Write spec → upload to dev.zai.htu.io/app → download .scored.md → run impl on .scored.md
+
+Note: a future update will add a machine-parseable `<!-- zilin-bs:score {json} -->`
+block alongside the markdown section. When that ships, update this rule to check
+the JSON block instead. Until then, the `## ZAI Spec Score` + `- **Passed:** YES`
+pattern is authoritative.
 
 ## Layer 2 Commands
 
