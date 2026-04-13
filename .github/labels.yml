@@ -1,0 +1,27 @@
+# Standard HTU label set — managed by chore spec
+# 2026-04-13__chore__park-score-signing-issue
+# Canonical source of truth. Any new label must be added here before being created in GitHub.
+- name: feat
+  color: AFA9EC
+  description: New feature
+- name: research
+  color: 85B7EB
+  description: Research/audit task — produces a report, no code
+- name: chore
+  color: D3D1C7
+  description: Maintenance, deployment, config
+- name: bug
+  color: F09595
+  description: Something is broken
+- name: hotfix
+  color: EF9F27
+  description: Urgent fix for a live issue
+- name: parked
+  color: "888780"
+  description: Blocked on prerequisite — do not impl
+- name: spec
+  color: 9FE1CB
+  description: Specification or design document
+- name: refactor
+  color: D3D1C7
+  description: Code restructure, no behavior change
