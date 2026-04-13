@@ -1,6 +1,6 @@
 # ZAI — Zero Ambiguity Intelligence
 
-**The engine of Spec Driven Development (SDD) by [High Tech United](https://htu.io).**
+**ZAI gives you governance, not guardrails — a complete audit trail from human intent to deployed code, with nothing lost in translation. By [High Tech United](https://htu.io).**
 
 <div align="center">
   <a href="https://htu.io"><img src="https://htu.io/logo.png" width="600" alt="ZAI by High Tech United"/></a>
@@ -29,6 +29,12 @@ Intent  →  Spec  →  Eval  →  Impl  →  Review  →  Deploy  →  ZZV Chai
 ```
 
 Each stage has a command: `spec`, `eval`, `impl`, `review`, `deploy`, `autopilot`. Outputs from one stage feed cleanly into the next. Nothing is lost between brain and branch.
+
+---
+
+## Try the scorer
+
+The first piece of the SDD pipeline is live as a web scorer at **[dev.zai.htu.io/app](https://dev.zai.htu.io/app)**. Drop any `.md` spec file into the upload zone and you'll get a deterministic, type-aware score — `feat` 7/7, `research` 6/6, `bug` 5/5, `chore` 2/2, or `hotfix` 3/3 — with a per-section breakdown and any pre-deploy gates the spec declares. Pure structural analysis, no LLM judgment; human review still required.
 
 ---
 
@@ -117,7 +123,7 @@ RGB is the universal status language — humans and agents read the same signals
 
 ## ZZV Chain
 
-Every merged PR, every deploy, every spec revision is anchored to the **ZZV Chain** — an append-only record that makes the SDD pipeline auditable end-to-end. When a regulator, a reviewer, or a future-you asks *"why does this code exist?"*, the chain has the answer: the spec, the eval, the reviewer, the deploy, the intent.
+Every merged PR, every deploy, every spec revision is *designed* to be anchored to the **ZZV Chain** — an append-only record that makes the SDD pipeline auditable end-to-end. Today, the spec→PR audit trail is live and verifiable via the ZiLin Command workflow (branch → impl → tests → PR → dual-control merge), and every artifact is recoverable from git. On-chain cryptographic anchoring ships with the Enterprise edition. When a regulator, a reviewer, or a future-you asks *"why does this code exist?"*, the chain will have the answer: the spec, the eval, the reviewer, the deploy, the intent.
 
 Learn more at [zzv.io](https://zzv.io).
 
