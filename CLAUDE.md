@@ -17,87 +17,30 @@ Before executing any `impl` or `implw` command, ZiLin-Dev MUST:
 
 1. Read the spec file
 2. Search for the pattern: `## ZAI Spec Score` (exact heading, case-sensitive)
-3. If the heading is absent → STOP. Emit exactly:
+3. If absent → STOP. Emit exactly:
    `needs_input: score this spec at dev.zai.htu.io/app first, then re-download the .scored.md`
-4. If the heading is present, check that the section contains a line
-   matching exactly: `- **Passed:** YES`
-   If that line is absent or reads `- **Passed:** NO` → STOP. Emit exactly:
+4. If present, check for `- **Passed:** YES`. If that line is absent or reads
+   `- **Passed:** NO` → STOP. Emit exactly:
    `needs_input: spec score is not passing — fix failing sections and re-score before impl`
-5. If the `- **Passed:** YES` line is present → **continue with the re-run integrity check below.**
-
-### Score integrity — re-run check (Option B)
-
-Steps 1–4 confirm the score block is *present* and *claims* passed.
-This check confirms the score block is *accurate*.
-
-6. Extract the spec content: everything above the `## ZAI Spec Score`
-   heading. That slice is what the original scorer saw.
-
-7. Re-run the rubric against the extracted content:
-   - Detect spec type from the filename prefix
-     (`YYYY-MM-DD__TYPE__title.md`)
-   - Evaluate all required sections for that type
-   - Compute live `spec_type`, `score` (N/M), and `passed` (true/false)
-
-   Reference invocation (zai repo):
-   ```bash
-   cd ~/dev/zai && npx tsx -e "
-     import { scoreSpec } from './src/lib/scoreSpec.ts';
-     import { readFileSync } from 'fs';
-     const raw = readFileSync(process.argv[1], 'utf8');
-     const idx = raw.search(/^## ZAI Spec Score$/m);
-     const content = idx === -1 ? raw : raw.slice(0, idx);
-     const name = process.argv[1].split('/').pop();
-     console.log(JSON.stringify(scoreSpec(content, name)));
-   " <spec-file-path>
-   ```
-   For streettt-private: until `htu-foundation/tools/zilin-bs/` exists,
-   perform the re-run inline using the same structural regex checks
-   documented at `zi007lin/zai/src/lib/scoreSpec.ts`.
-
-8. Compare live result against the stored score block in the file:
-   - If `live.passed !== stored.passed` → STOP. Emit exactly:
-     `needs_input: score block mismatch — stored says {stored.passed}, live re-run says {live.passed}. Re-score at dev.zai.htu.io/app`
-   - If `live.score !== stored.score` → STOP with the same mismatch message
-   - If `live.spec_type !== stored.spec_type` → STOP. Emit exactly:
-     `needs_input: spec type mismatch — stored says {stored.spec_type}, filename indicates {live.spec_type}. Re-score at dev.zai.htu.io/app`
-   - If all three match → **proceed with impl.**
-
-9. This check runs on every `impl` invocation, not just the first.
-   A spec that was valid yesterday may fail today if the rubric is
-   updated. Re-score and re-download whenever the rubric version
-   changes (track `scoreSpec.ts::RUBRIC_VERSION` on zai).
+5. If passed → run the score integrity check per the Layer 2 impl command
+   (implementation in the private layer).
 
 No exceptions. No overrides. No "I'll proceed anyway since the intent is clear."
 A spec without a passing, accurate score block is not a valid impl input.
 
-The correct workflow is:
+The correct workflow:
   Write spec → upload to dev.zai.htu.io/app → download .scored.md → run impl on .scored.md
 
-Note: the re-run check above (Option B) is superseded by cryptographic
-signature verification (Option A) once the CF Worker score-signing
-infrastructure ships — see `issues/parked/2026-04-13__feat__zai-score-signing-cf-worker.md`.
-When a `SCORE_SIGNING_KEY` secret is present in the runner environment,
-skip steps 6–9 and use signature verification instead.
+Note: the re-run integrity check (Option B) is superseded by CF Worker signature
+verification (Option A) once `SCORE_SIGNING_KEY` is live on the runner. See
+`issues/parked/2026-04-13__feat__zai-score-signing-cf-worker.md`.
 
 ## Layer 2 Commands
 
-Commands in `.claude/commands/` are **symlinks** into `~/dev/streettt-private/.claude/commands/`.
-Never copy — always symlink — so private contents stay private.
-The `.claude/commands/` directory is gitignored; each developer sets it up locally.
-
-Setup:
-```bash
-mkdir -p ~/dev/zai/.claude/commands
-cd ~/dev/zai/.claude/commands
-for f in autopilot.md deploy.md eval.md impl.md review.md spec.md; do
-  ln -s ~/dev/streettt-private/.claude/commands/$f $f
-done
-```
-
-Available: `autopilot`, `deploy`, `eval`, `impl`, `review`, `spec`.
-
-Deferred (not yet in streettt-private): `implw`, `impl-cleanup`.
+Implementation details live in the private layer (never in this public repo).
+Run `impl i <scored-spec.md>` to execute any scored spec. The command
+orchestrates the full impl workflow — branch, test, PR, review gate —
+and performs the score integrity check before touching any file.
 
 ## Dual-PR Governance
 
@@ -112,4 +55,21 @@ git config user.name "ZiLin"
 git config user.email "noreply@zzv.io"
 ```
 
-Never add Co-Authored-By trailers.
+Never add `Co-Authored-By` trailers.
+
+---
+
+## Privacy rule — permanent
+
+Sensitive operational details are NEVER committed to public repos:
+
+- Local filesystem paths (`~/dev/...`)
+- Command inventories or toolchain invocations
+- Symlink structures pointing to private repos
+- Internal module paths or test invocations
+
+These belong in the private layer only. Violations are reverted immediately
+and the committer must run `git filter-repo` to scrub history (coordinate
+with the admin — force-push required).
+
+Public repos contain governance rules and stubs only. No exceptions.
