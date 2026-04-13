@@ -35,6 +35,19 @@ Note: the re-run integrity check (Option B) is superseded by CF Worker signature
 verification (Option A) once `SCORE_SIGNING_KEY` is live on the runner. See
 `issues/parked/2026-04-13__feat__zai-score-signing-cf-worker.md`.
 
+### Gate 1 — spec approval
+
+Before impl runs, every spec is classified:
+
+- **Trivial** (`chore` 2/2, `hotfix` 3/3, no gates listed in the score block):
+  AUTO — proceeds immediately
+- **Non-trivial** (`feat`, `bug`, `research`, or any spec with one or more items
+  in `gates[]`, or any spec referencing a force-push / history rewrite /
+  destructive operation): HOLD — daniel-silvers approves the GitHub issue
+  before ZiLin-Dev reads it
+
+See the private layer for the full classifier implementation.
+
 ## Layer 2 Commands
 
 Implementation details live in the private layer (never in this public repo).
