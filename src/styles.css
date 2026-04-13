@@ -2,6 +2,28 @@
 
 :root {
   color-scheme: dark;
+
+  --font-mono-zai: "DM Mono", "JetBrains Mono", "Courier New", monospace;
+  --font-sans-zai: "Sora", system-ui, -apple-system, "Segoe UI", Roboto,
+    sans-serif;
+
+  --zai-teal: #1d9e75;
+  --zai-purple: #7f77dd;
+  --zai-amber: #ef9f27;
+  --zai-muted: #666;
+  --zai-border: #222;
+  --zai-card: #111;
+}
+
+@keyframes zai-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 html,
