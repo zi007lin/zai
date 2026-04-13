@@ -50,6 +50,14 @@ The first piece of the SDD pipeline is live as a web scorer at **[demo.zai.htu.i
 
 ---
 
+## How it works
+
+![ZiLin autonomous pipeline](docs/assets/zilin-pipeline.svg)
+
+ZiLin sends intent — text, images, or a video URL — through the HTU entry window. The Spec Agent on the ZZV backend (cloud VPS) extracts video frames if needed, generates a spec, and runs it through the ZiSpec score gate. Two governance gates control what proceeds: trivial specs (chore, hotfix) auto-approve; non-trivial specs (feat, bug, research) require daniel-silvers approval before impl runs. Every PR requires daniel-silvers review before merge. No single actor merges alone.
+
+---
+
 ## ZAI Architecture — Agentic Traffic Controller
 
 ZAI is not a single agent. It is a **traffic controller** that routes work across specialized subagents, each with bounded authority and a clear handoff protocol.
