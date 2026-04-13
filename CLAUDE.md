@@ -48,6 +48,10 @@ Before impl runs, every spec is classified:
 
 See the private layer for the full classifier implementation.
 
+Solo operator: ZiLin may self-approve non-trivial specs via session reply
+`approved` or label removal. PR review at merge is always required.
+See the private layer for the full solo-operator rule.
+
 ## Layer 2 Commands
 
 Implementation details live in the private layer (never in this public repo).
