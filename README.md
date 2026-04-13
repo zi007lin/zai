@@ -38,6 +38,18 @@ The first piece of the SDD pipeline is live as a web scorer at **[dev.zai.htu.io
 
 ---
 
+## How to use ZAI
+
+1. Write your spec following the 7-section ZiLin Command format (or download the template from the scorer page).
+2. Upload the `.md` file to **[demo.zai.htu.io/app](https://demo.zai.htu.io/app)**.
+3. Get a deterministic score — no LLM judgment, pure structural analysis.
+4. Download the `.scored.md` — it carries the rubric result alongside your original content.
+5. Run `impl i <your-spec.scored.md>` via Claude Code. The impl gate refuses anything that isn't a passing score block, so the workflow either completes end-to-end or stops at the gate with a specific `needs_input` message telling you what to fix.
+
+_A short demo GIF of this flow will be added in a follow-up once a verified recording is captured on the current build._
+
+---
+
 ## ZAI Architecture — Agentic Traffic Controller
 
 ZAI is not a single agent. It is a **traffic controller** that routes work across specialized subagents, each with bounded authority and a clear handoff protocol.
