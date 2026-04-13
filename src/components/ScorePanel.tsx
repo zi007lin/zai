@@ -1,10 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  type ScoreResult,
-  SECTION_LABELS,
-  SECTION_ORDER,
-  type SectionStatus,
-} from "../lib/scoreSpec";
+import { type ScoreResult, type SectionStatus } from "../lib/scoreSpec";
 
 interface Props {
   result: ScoreResult;
@@ -39,7 +34,8 @@ export default function ScorePanel({
   justCopied,
 }: Props) {
   const reducedMotion = useMemo(() => prefersReducedMotion(), []);
-  const totalSections = SECTION_ORDER.length;
+  const totalSections = result.section_order.length;
+  const denominator = result.required_count;
   const [revealed, setRevealed] = useState(reducedMotion ? totalSections : 0);
 
   useEffect(() => {
@@ -50,32 +46,40 @@ export default function ScorePanel({
     setRevealed(0);
     const timers: number[] = [];
     for (let i = 1; i <= totalSections; i++) {
-      timers.push(
-        window.setTimeout(() => setRevealed(i), i * STAGGER_MS)
-      );
+      timers.push(window.setTimeout(() => setRevealed(i), i * STAGGER_MS));
     }
     return () => timers.forEach((t) => window.clearTimeout(t));
   }, [result.evaluated_at, reducedMotion, totalSections]);
 
   const running = revealed < totalSections;
-  const passCountSoFar = SECTION_ORDER.slice(0, revealed).filter(
-    (k) => result.sections[k] === "PASS" || result.sections[k] === "SKIP"
+  const passCountSoFar = result.section_order
+    .slice(0, revealed)
+    .filter(
+      (k) => result.sections[k] === "PASS" || result.sections[k] === "SKIP"
+    ).length;
+  const failCount = result.section_order.filter(
+    (k) => result.sections[k] === "FAIL"
   ).length;
 
   const statusText = running
     ? "evaluating…"
     : result.passed
     ? "cleared to ship"
-    : `${SECTION_ORDER.filter((k) => result.sections[k] === "FAIL").length} sections failed`;
+    : `${failCount} sections failed`;
 
   const badge = running
     ? { text: "RUNNING", color: "var(--zai-amber)" }
     : result.passed
-    ? { text: `${passCountSoFar}/7 PASS`, color: "var(--zai-teal)" }
+    ? {
+        text: `${passCountSoFar}/${denominator} PASS`,
+        color: "var(--zai-teal)",
+      }
     : {
-        text: `${SECTION_ORDER.filter((k) => result.sections[k] === "FAIL").length}/7 FAIL`,
+        text: `${failCount}/${denominator} FAIL`,
         color: "#E15B5B",
       };
+
+  const typeLabel = result.spec_type.toUpperCase();
 
   return (
     <div
@@ -89,8 +93,20 @@ export default function ScorePanel({
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.25em] text-[var(--zai-muted)]">
-            Spec score
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.25em] text-[var(--zai-muted)]">
+            <span>Spec score</span>
+            <span
+              className="px-2 py-0.5 rounded-full text-[10px]"
+              style={{
+                fontFamily: "var(--font-mono-zai)",
+                color: "var(--zai-purple)",
+                border: "1px solid var(--zai-purple)",
+                letterSpacing: "0.15em",
+              }}
+              data-testid="spec-type-badge"
+            >
+              {typeLabel}
+            </span>
           </div>
           <div
             className="mt-1 text-6xl sm:text-7xl"
@@ -102,7 +118,7 @@ export default function ScorePanel({
             }}
             data-testid="score-counter"
           >
-            {passCountSoFar}/7
+            {passCountSoFar}/{denominator}
           </div>
           <div className="mt-2 text-sm text-[var(--zai-muted)]">{statusText}</div>
         </div>
@@ -124,21 +140,22 @@ export default function ScorePanel({
       </div>
 
       <div className="mt-6 space-y-3">
-        {SECTION_ORDER.map((key, i) => {
+        {result.section_order.map((key, i) => {
           const status = result.sections[key];
           const isRevealed = i < revealed;
           const fill = isRevealed ? 100 : 0;
           return (
             <div
               key={key}
-              className="grid grid-cols-[1fr_auto] sm:grid-cols-[140px_1fr_auto] gap-3 items-center"
+              className="grid grid-cols-[1fr_auto] sm:grid-cols-[160px_1fr_auto] gap-3 items-center"
               data-testid={`section-${key}`}
             >
               <div
-                className="text-xs sm:text-sm text-neutral-300"
+                className="text-xs sm:text-sm text-neutral-300 truncate"
                 style={{ fontFamily: "var(--font-mono-zai)" }}
+                title={result.section_labels[key]}
               >
-                {SECTION_LABELS[key]}
+                {result.section_labels[key]}
               </div>
               <div className="hidden sm:block h-2 rounded-full bg-[var(--zai-border)] overflow-hidden">
                 <div
