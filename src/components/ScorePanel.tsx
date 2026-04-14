@@ -1,12 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { type ScoreResult, type SectionStatus } from "../lib/scoreSpec";
 
+type ImplState = "idle" | "dispatching" | "queued" | "error";
+
 interface Props {
   result: ScoreResult;
   filename: string;
   onDownloadScored: () => void;
-  onCopyImplCommand: () => void;
-  justCopied: boolean;
+  onRunImpl: () => void;
+  implState: ImplState;
+  issueNumber: number | null;
+  errorMsg: string;
+  targetRepo: string;
 }
 
 const STAGGER_MS = 200;
@@ -30,8 +35,11 @@ export default function ScorePanel({
   result,
   filename,
   onDownloadScored,
-  onCopyImplCommand,
-  justCopied,
+  onRunImpl,
+  implState,
+  issueNumber,
+  errorMsg,
+  targetRepo,
 }: Props) {
   const reducedMotion = useMemo(() => prefersReducedMotion(), []);
   const totalSections = result.section_order.length;
@@ -222,13 +230,44 @@ export default function ScorePanel({
         </button>
         <button
           type="button"
-          onClick={onCopyImplCommand}
-          className="flex-1 px-4 py-2.5 rounded-md bg-[var(--zai-teal)] text-white font-medium hover:opacity-90 transition-opacity"
+          onClick={onRunImpl}
+          disabled={!result.passed || implState === "dispatching" || implState === "queued"}
+          className="flex-1 px-4 py-2.5 rounded-md bg-[var(--zai-teal)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ fontFamily: "var(--font-sans-zai)" }}
+          data-testid="run-impl-button"
         >
-          {justCopied ? "Copied!" : "Run impl →"}
+          {implState === "dispatching" && "Dispatching…"}
+          {implState === "queued" && "Run impl → (queued)"}
+          {(implState === "idle" || implState === "error") && "Run impl →"}
         </button>
       </div>
+
+      {implState === "queued" && issueNumber !== null && (
+        <div
+          className="mt-3 text-sm text-[var(--zai-teal)]"
+          data-testid="run-impl-queued"
+        >
+          ✅ Queued for issue #{issueNumber} — PR will open in ~2 min.{" "}
+          <a
+            href={`https://github.com/${targetRepo}/actions`}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Watch run →
+          </a>
+        </div>
+      )}
+
+      {implState === "error" && (
+        <div
+          className="mt-3 text-sm text-[#E15B5B]"
+          data-testid="run-impl-error"
+        >
+          ❌ {errorMsg || "Pipeline error — retry or run implw manually"}
+        </div>
+      )}
+
     </div>
   );
 }

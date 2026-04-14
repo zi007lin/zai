@@ -52,16 +52,25 @@ function buildScoredSpec(
   return lines.join("\n");
 }
 
+type ImplState = "idle" | "dispatching" | "queued" | "error";
+
+const TARGET_REPO = "zi007lin/streettt-private";
+
 export default function AppPage() {
   const [filename, setFilename] = useState<string | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [result, setResult] = useState<ScoreResult | null>(null);
-  const [justCopied, setJustCopied] = useState(false);
+  const [implState, setImplState] = useState<ImplState>("idle");
+  const [issueNumber, setIssueNumber] = useState<number | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string>("");
 
   const handleFile = useCallback((name: string, contents: string) => {
     setFilename(name);
     setMarkdown(contents);
     setResult(scoreSpec(contents, name));
+    setImplState("idle");
+    setIssueNumber(null);
+    setErrorMsg("");
   }, []);
 
   const handleDownloadTemplate = useCallback(() => {
@@ -75,17 +84,46 @@ export default function AppPage() {
     downloadBlob(scoredName, out);
   }, [filename, markdown, result]);
 
-  const handleCopyImplCommand = useCallback(async () => {
-    if (!filename) return;
-    const cmd = `impl i ${filename}`;
+  const handleRunImpl = useCallback(async () => {
+    if (!filename || !markdown || !result || !result.passed) return;
+    setImplState("dispatching");
+    setErrorMsg("");
     try {
-      await navigator.clipboard.writeText(cmd);
-    } catch {
-      // silently ignore — toast still fires
+      const scoredBody = buildScoredSpec(filename, markdown, result);
+      const titleSlug = filename.replace(/\.md$/i, "").replace(/^.*__/, "");
+      const issueRes = await fetch("/api/issue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${result.spec_type}: ${titleSlug}`,
+          body: scoredBody,
+          label: result.spec_type,
+          repo: TARGET_REPO,
+        }),
+      });
+      if (!issueRes.ok) {
+        throw new Error(`/api/issue ${issueRes.status}: ${await issueRes.text()}`);
+      }
+      const issueData = (await issueRes.json()) as { issue_number: number };
+      setIssueNumber(issueData.issue_number);
+
+      const dispatchRes = await fetch("/api/impl", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          issue_number: issueData.issue_number,
+          repo: TARGET_REPO,
+        }),
+      });
+      if (!dispatchRes.ok) {
+        throw new Error(`/api/impl ${dispatchRes.status}: ${await dispatchRes.text()}`);
+      }
+      setImplState("queued");
+    } catch (e) {
+      setImplState("error");
+      setErrorMsg(e instanceof Error ? e.message : "Unknown error");
     }
-    setJustCopied(true);
-    window.setTimeout(() => setJustCopied(false), 1600);
-  }, [filename]);
+  }, [filename, markdown, result]);
 
   const header = useMemo(
     () => (
@@ -134,8 +172,11 @@ export default function AppPage() {
               result={result}
               filename={filename}
               onDownloadScored={handleDownloadScored}
-              onCopyImplCommand={handleCopyImplCommand}
-              justCopied={justCopied}
+              onRunImpl={handleRunImpl}
+              implState={implState}
+              issueNumber={issueNumber}
+              errorMsg={errorMsg}
+              targetRepo={TARGET_REPO}
             />
           ) : (
             <div
