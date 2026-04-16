@@ -6,7 +6,7 @@ on:
 
 jobs:
   impl:
-    runs-on: [self-hosted, contabo-zilin]
+    runs-on: [self-hosted, contabo-zilin-zai]
     timeout-minutes: 60
     steps:
       - name: Dispatch to ZAI router
