@@ -175,20 +175,30 @@ describe("scoreSpec — feat", () => {
     expect(r.score).toBe("7/7");
     expect(r.passed).toBe(true);
     expect(r.sections.draft_of_thoughts).toBe("PASS");
+    // all passing sections have null reason
+    for (const key of r.section_order) {
+      if (r.sections[key] !== "FAIL") {
+        expect(r.section_reasons[key]).toBeNull();
+      }
+    }
   });
 
-  it("intent FAILs on empty body", () => {
+  it("intent FAILs on empty body with reason", () => {
     const md = featSpec.replace(
       /## Intent\nA tight paragraph[^\n]*\n/,
       "## Intent\n\n"
     );
-    expect(scoreSpec(md, "2026-04-13__feat__x.md").sections.intent).toBe("FAIL");
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toBe("intent section is empty");
   });
 
-  it("intent FAILs when body exceeds 150 words", () => {
+  it("intent FAILs when body exceeds 150 words with reason", () => {
     const long = "word ".repeat(200);
     const md = `## Intent\n${long}\n\n## Next\n`;
-    expect(scoreSpec(md, "2026-04-13__feat__x.md").sections.intent).toBe("FAIL");
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toMatch(/exceeds 150-word limit/);
   });
 
   it("decision_tree FAILs without a table", () => {
@@ -196,13 +206,16 @@ describe("scoreSpec — feat", () => {
       /\| Option \| Risk \| Decision \|\n\|---\|---\|---\|\n\| A \| low \| ✅ \|\n/,
       ""
     );
-    expect(scoreSpec(md, "2026-04-13__feat__x.md").sections.decision_tree).toBe("FAIL");
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.decision_tree).toBe("FAIL");
+    expect(r.section_reasons.decision_tree).toMatch(/missing decision table/);
   });
 
   it("draft_of_thoughts SKIPs when absent (never FAIL)", () => {
     const md = featSpec.replace(/## Draft-of-thoughts[\s\S]*?(?=## )/, "");
     const r = scoreSpec(md, "2026-04-13__feat__x.md");
     expect(r.sections.draft_of_thoughts).toBe("SKIP");
+    expect(r.section_reasons.draft_of_thoughts).toBeNull();
     expect(r.passed).toBe(true);
     expect(r.score).toBe("7/7");
   });
@@ -212,12 +225,16 @@ describe("scoreSpec — feat", () => {
       /- \[ \] one\n- \[ \] two\n- \[ \] three\n/,
       "- [ ] one\n- [ ] two\n"
     );
-    expect(scoreSpec(md, "2026-04-13__feat__x.md").sections.final_spec).toBe("FAIL");
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.final_spec).toBe("FAIL");
+    expect(r.section_reasons.final_spec).toMatch(/minimum 3 acceptance criteria/);
   });
 
   it("game_theory FAILs when Mitigation is missing", () => {
     const md = featSpec.replace(/Mitigation:[^\n]*\n/, "");
-    expect(scoreSpec(md, "2026-04-13__feat__x.md").sections.game_theory).toBe("FAIL");
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.game_theory).toBe("FAIL");
+    expect(r.section_reasons.game_theory).toMatch(/Mitigation/);
   });
 });
 
@@ -310,6 +327,44 @@ describe("scoreSpec — hotfix", () => {
     expect(r.required_count).toBe(3);
     expect(r.score).toBe("3/3");
     expect(r.passed).toBe(true);
+  });
+});
+
+// ─── section_reasons ──────────────────────────────────────────────────────
+
+describe("scoreSpec — section_reasons", () => {
+  it("all passing sections return null reasons", () => {
+    const r = scoreSpec(featSpec, "2026-04-12__feat__example.md");
+    for (const key of r.section_order) {
+      expect(r.section_reasons[key]).toBeNull();
+    }
+  });
+
+  it("failing sections return non-null reason strings", () => {
+    const r = scoreSpec("# README\n\nJust a readme.\n", "2026-04-13__feat__x.md");
+    for (const key of r.section_order) {
+      if (r.sections[key] === "FAIL") {
+        expect(typeof r.section_reasons[key]).toBe("string");
+        expect((r.section_reasons[key] as string).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("files_list reason mentions code block when section exists but has no code block", () => {
+    const md = `${featSpec.replace(/```\nsrc\/foo\.ts\n```/, "no code block here")}`;
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.files_list).toBe("FAIL");
+    expect(r.section_reasons.files_list).toMatch(/no code block/);
+  });
+
+  it("migration_summary reason mentions Open questions when row is empty", () => {
+    const md = featSpec.replace(
+      /\| Open questions \| confirm name \|/,
+      "| Open questions | |"
+    );
+    const r = scoreSpec(md, "2026-04-13__feat__x.md");
+    expect(r.sections.migration_summary).toBe("FAIL");
+    expect(r.section_reasons.migration_summary).toMatch(/Open questions/);
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { type ScoreResult, type SectionStatus } from "../lib/scoreSpec";
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
@@ -45,6 +45,25 @@ export default function ScorePanel({
   const totalSections = result.section_order.length;
   const denominator = result.required_count;
   const [revealed, setRevealed] = useState(reducedMotion ? totalSections : 0);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = useCallback((key: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  // Auto-expand all FAIL rows once reveal animation completes
+  useEffect(() => {
+    if (revealed < totalSections) return;
+    const failKeys = result.section_order.filter(
+      (k) => result.sections[k] === "FAIL" && result.section_reasons[k]
+    );
+    if (failKeys.length > 0) setExpanded(new Set(failKeys));
+  }, [revealed, totalSections, result.section_order, result.sections, result.section_reasons]);
 
   useEffect(() => {
     if (reducedMotion) {
@@ -52,6 +71,7 @@ export default function ScorePanel({
       return;
     }
     setRevealed(0);
+    setExpanded(new Set());
     const timers: number[] = [];
     for (let i = 1; i <= totalSections; i++) {
       timers.push(window.setTimeout(() => setRevealed(i), i * STAGGER_MS));
@@ -150,45 +170,98 @@ export default function ScorePanel({
       <div className="mt-6 space-y-3">
         {result.section_order.map((key, i) => {
           const status = result.sections[key];
+          const reason = result.section_reasons[key];
           const isRevealed = i < revealed;
           const fill = isRevealed ? 100 : 0;
+          const isFail = status === "FAIL" && reason;
+          const isExpanded = expanded.has(key);
           return (
-            <div
-              key={key}
-              className="grid grid-cols-[1fr_auto] sm:grid-cols-[160px_1fr_auto] gap-3 items-center"
-              data-testid={`section-${key}`}
-            >
+            <div key={key} data-testid={`section-${key}`}>
               <div
-                className="text-xs sm:text-sm text-neutral-300 truncate"
-                style={{ fontFamily: "var(--font-mono-zai)" }}
-                title={result.section_labels[key]}
+                className={`grid grid-cols-[1fr_auto] sm:grid-cols-[160px_1fr_auto] gap-3 items-center${
+                  isFail ? " cursor-pointer" : ""
+                }`}
+                role={isFail ? "button" : undefined}
+                tabIndex={isFail ? 0 : undefined}
+                onClick={isFail ? () => toggleExpanded(key) : undefined}
+                onKeyDown={
+                  isFail
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleExpanded(key);
+                        }
+                      }
+                    : undefined
+                }
               >
-                {result.section_labels[key]}
-              </div>
-              <div className="hidden sm:block h-2 rounded-full bg-[var(--zai-border)] overflow-hidden">
                 <div
-                  className="h-full rounded-full"
+                  className="text-xs sm:text-sm text-neutral-300 truncate flex items-center gap-1.5"
+                  style={{ fontFamily: "var(--font-mono-zai)" }}
+                  title={result.section_labels[key]}
+                >
+                  {result.section_labels[key]}
+                  {isFail && (
+                    <span
+                      className="text-[10px] transition-transform duration-150"
+                      style={{
+                        display: "inline-block",
+                        transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)",
+                        color: "#E15B5B",
+                      }}
+                    >
+                      ▼
+                    </span>
+                  )}
+                </div>
+                <div className="hidden sm:block h-2 rounded-full bg-[var(--zai-border)] overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${fill}%`,
+                      background: statusColor(status),
+                      transition: reducedMotion
+                        ? undefined
+                        : "width 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+                    }}
+                  />
+                </div>
+                <span
+                  className="justify-self-end text-[10px] px-2 py-0.5 rounded-full font-semibold"
                   style={{
-                    width: `${fill}%`,
-                    background: statusColor(status),
+                    fontFamily: "var(--font-mono-zai)",
+                    color: statusColor(status),
+                    border: `1px solid ${statusColor(status)}`,
+                    opacity: isRevealed ? 1 : 0.25,
+                    transition: "opacity 200ms",
+                  }}
+                >
+                  {statusLabel(status)}
+                </span>
+              </div>
+              {isFail && (
+                <div
+                  className="overflow-hidden"
+                  style={{
+                    maxHeight: isExpanded ? "200px" : "0",
                     transition: reducedMotion
                       ? undefined
-                      : "width 600ms cubic-bezier(0.4, 0, 0.2, 1)",
+                      : "max-height 150ms ease-in",
                   }}
-                />
-              </div>
-              <span
-                className="justify-self-end text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                style={{
-                  fontFamily: "var(--font-mono-zai)",
-                  color: statusColor(status),
-                  border: `1px solid ${statusColor(status)}`,
-                  opacity: isRevealed ? 1 : 0.25,
-                  transition: "opacity 200ms",
-                }}
-              >
-                {statusLabel(status)}
-              </span>
+                  data-testid={`section-${key}-reason`}
+                >
+                  <div
+                    className="mt-1.5 px-3 py-2 rounded-md text-xs text-neutral-200"
+                    style={{
+                      fontFamily: "var(--font-mono-zai)",
+                      background: "rgba(225, 91, 91, 0.1)",
+                      border: "1px solid rgba(225, 91, 91, 0.2)",
+                    }}
+                  >
+                    {reason}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
