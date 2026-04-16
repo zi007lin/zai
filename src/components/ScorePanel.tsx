@@ -247,7 +247,16 @@ export default function ScorePanel({
           className="mt-3 text-sm text-[var(--zai-teal)]"
           data-testid="run-impl-queued"
         >
-          ✅ Queued for issue #{issueNumber} — PR will open in ~2 min.{" "}
+          ✅ Queued —{" "}
+          <a
+            href={`https://github.com/${targetRepo}/issues/${issueNumber}`}
+            target="_blank"
+            rel="noreferrer"
+            className="underline"
+          >
+            Issue #{issueNumber}
+          </a>{" "}
+          — PR will open in ~2 min.{" "}
           <a
             href={`https://github.com/${targetRepo}/actions`}
             target="_blank"
