@@ -6,29 +6,19 @@ on:
 
 jobs:
   impl:
-    runs-on: [self-hosted, contabo, zilin, zai]
+    runs-on: [self-hosted, contabo-zilin]
     timeout-minutes: 60
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.ZZV_DISPATCH_TOKEN }}
-
-      - name: Pull latest main
-        run: |
-          git checkout main
-          git pull origin main
-
-      - name: Run implw
+      - name: Dispatch to ZAI router
         env:
           GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
         run: |
-          export PATH="/home/zilin/.npm-global/bin:/home/zilin/.local/bin:$PATH"
+          export PATH="$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
           ISSUE_NUMBER="${{ github.event.client_payload.issue_number }}"
           if [ -z "$ISSUE_NUMBER" ]; then
             echo "Error: issue_number not provided in client_payload"
             exit 1
           fi
-          echo "Running implw $ISSUE_NUMBER via claude -p"
-          cd /home/zilin/dev/zai
-          claude -p "implw $ISSUE_NUMBER"
+          echo "Routing implw $ISSUE_NUMBER for ${{ github.repository }}"
+          cd "$ROUTER_PATH"
+          claude -p "implw $ISSUE_NUMBER --repo ${{ github.repository }}"
