@@ -67,10 +67,29 @@ export default function AppPage() {
   const handleFile = useCallback((name: string, contents: string) => {
     setFilename(name);
     setMarkdown(contents);
-    setResult(scoreSpec(contents, name));
+    const scored = scoreSpec(contents, name);
+    setResult(scored);
     setImplState("idle");
     setIssueNumber(null);
     setErrorMsg("");
+
+    // Fire-and-forget: log section results to CF Analytics
+    const events = scored.section_order.map((key) => ({
+      section: key,
+      status: scored.sections[key],
+      reason: scored.section_reasons[key],
+      spec_type: scored.spec_type,
+      rubric_version: scored.rubric_version,
+    }));
+    fetch("/api/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rubric_version: scored.rubric_version,
+        spec_type: scored.spec_type,
+        events,
+      }),
+    }).catch(() => {});
   }, []);
 
   const handleDownloadTemplate = useCallback(() => {

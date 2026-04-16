@@ -10,6 +10,7 @@ export interface ScoreResult {
   passed: boolean;
   evaluated_at: string;
   sections: Record<string, SectionStatus>;
+  section_reasons: Record<string, string | null>;
   section_order: string[];
   section_labels: Record<string, string>;
   gates: string[];
@@ -67,6 +68,25 @@ function acceptanceCriteriaCheckboxes(markdown: string): number {
   return checkboxCount(slice);
 }
 
+// ─── section check result ─────────────────────────────────────────────────
+
+interface CheckResult {
+  status: SectionStatus;
+  reason: string | null;
+}
+
+function pass(): CheckResult {
+  return { status: "PASS", reason: null };
+}
+
+function skip(): CheckResult {
+  return { status: "SKIP", reason: null };
+}
+
+function fail(reason: string): CheckResult {
+  return { status: "FAIL", reason };
+}
+
 // ─── section checks ───────────────────────────────────────────────────────
 
 const INTENT_HEADING = /^##\s+Intent\b/mi;
@@ -82,87 +102,136 @@ const REPORT_FORMAT_HEADING = /^##\s+Report\s+Format\b/mi;
 const REPRO_HEADING = /^##\s+Repro(duction)?(\s+Steps)?\b/mi;
 const FIX_HEADING = /^##\s+Fix\b/mi;
 
-function checkIntentStrict(md: string): SectionStatus {
-  if (!headingPresent(md, INTENT_HEADING)) return "FAIL";
+function checkIntentStrict(md: string): CheckResult {
+  if (!headingPresent(md, INTENT_HEADING))
+    return fail("\"## Intent\" heading not found");
   const body = sectionBody(md, INTENT_HEADING);
   const words = wordCount(body);
-  return words > 0 && words <= 150 ? "PASS" : "FAIL";
+  if (words === 0) return fail("intent section is empty");
+  if (words > 150)
+    return fail(`intent exceeds 150-word limit — found ${words} words`);
+  return pass();
 }
 
-function checkIntentLoose(md: string): SectionStatus {
-  return headingPresent(md, INTENT_HEADING) ? "PASS" : "FAIL";
+function checkIntentLoose(md: string): CheckResult {
+  if (!headingPresent(md, INTENT_HEADING))
+    return fail("\"## Intent\" heading not found");
+  return pass();
 }
 
-function checkDecisionTree(md: string): SectionStatus {
-  if (!headingPresent(md, DECISION_TREE_HEADING)) return "FAIL";
+function checkDecisionTree(md: string): CheckResult {
+  if (!headingPresent(md, DECISION_TREE_HEADING))
+    return fail("\"## Decision Tree\" heading not found");
   const body = sectionBody(md, DECISION_TREE_HEADING);
   const hasTable = tablePresent(body);
   const hasTrigger = /trigger\s+for\s+change/i.test(body);
-  return hasTable && hasTrigger ? "PASS" : "FAIL";
+  if (!hasTable && !hasTrigger)
+    return fail("missing decision table and \"Trigger for change\" statement");
+  if (!hasTable) return fail("missing decision table (expected \"| | |\" pattern)");
+  if (!hasTrigger) return fail("missing \"Trigger for change\" statement");
+  return pass();
 }
 
-function checkDraftOfThoughts(md: string): SectionStatus {
-  return headingPresent(md, DRAFT_HEADING) ? "PASS" : "SKIP";
+function checkDraftOfThoughts(md: string): CheckResult {
+  return headingPresent(md, DRAFT_HEADING) ? pass() : skip();
 }
 
-function checkFinalSpec(md: string): SectionStatus {
-  if (!headingPresent(md, FINAL_SPEC_HEADING)) return "FAIL";
-  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING)) return "FAIL";
-  return acceptanceCriteriaCheckboxes(md) >= 3 ? "PASS" : "FAIL";
+function checkFinalSpec(md: string): CheckResult {
+  if (!headingPresent(md, FINAL_SPEC_HEADING))
+    return fail("\"## Final Spec\" heading not found");
+  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING))
+    return fail("\"## Acceptance Criteria\" heading not found");
+  const count = acceptanceCriteriaCheckboxes(md);
+  if (count < 3)
+    return fail(
+      `minimum 3 acceptance criteria checkboxes required — found ${count}`
+    );
+  return pass();
 }
 
-function checkGameTheory(md: string): SectionStatus {
-  if (!headingPresent(md, GAME_THEORY_HEADING)) return "FAIL";
+function checkGameTheory(md: string): CheckResult {
+  if (!headingPresent(md, GAME_THEORY_HEADING))
+    return fail("\"## Game Theory\" heading not found");
   const body = sectionBody(md, GAME_THEORY_HEADING);
-  const ok =
-    /who\s+benefits/i.test(body) &&
-    /abuse\s+vector/i.test(body) &&
-    /mitigation/i.test(body);
-  return ok ? "PASS" : "FAIL";
+  const missing: string[] = [];
+  if (!/who\s+benefits/i.test(body)) missing.push("\"Who benefits\"");
+  if (!/abuse\s+vector/i.test(body)) missing.push("\"Abuse vector\"");
+  if (!/mitigation/i.test(body)) missing.push("\"Mitigation\"");
+  if (missing.length > 0)
+    return fail(`missing required subsections: ${missing.join(", ")}`);
+  return pass();
 }
 
-function checkMigrationSummary(md: string): SectionStatus {
-  if (!headingPresent(md, MIGRATION_HEADING)) return "FAIL";
+function checkMigrationSummary(md: string): CheckResult {
+  if (!headingPresent(md, MIGRATION_HEADING))
+    return fail("\"## Subject Migration Summary\" heading not found");
   const body = sectionBody(md, MIGRATION_HEADING);
-  return openQuestionsNotEmpty(body) ? "PASS" : "FAIL";
+  if (!openQuestionsNotEmpty(body))
+    return fail("\"Open questions\" row is empty or missing in migration table");
+  return pass();
 }
 
-function checkFilesList(md: string): SectionStatus {
-  if (!headingPresent(md, FILES_HEADING)) return "FAIL";
-  return codeBlockPresent(sectionBody(md, FILES_HEADING)) ? "PASS" : "FAIL";
+function checkFilesList(md: string): CheckResult {
+  if (!headingPresent(md, FILES_HEADING))
+    return fail("\"## Files\" heading not found");
+  if (!codeBlockPresent(sectionBody(md, FILES_HEADING)))
+    return fail("no code block found in Files section");
+  return pass();
 }
 
-function checkResearchQuestions(md: string): SectionStatus {
-  if (!headingPresent(md, RESEARCH_QUESTIONS_HEADING)) return "FAIL";
-  return subheadingCount(sectionBody(md, RESEARCH_QUESTIONS_HEADING)) >= 1
-    ? "PASS"
-    : "FAIL";
+function checkResearchQuestions(md: string): CheckResult {
+  if (!headingPresent(md, RESEARCH_QUESTIONS_HEADING))
+    return fail("\"## Research Questions\" heading not found");
+  if (subheadingCount(sectionBody(md, RESEARCH_QUESTIONS_HEADING)) < 1)
+    return fail("at least one ### subheading required under Research Questions");
+  return pass();
 }
 
-function checkAcceptanceCriteriaResearch(md: string): SectionStatus {
-  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING)) return "FAIL";
-  if (acceptanceCriteriaCheckboxes(md) < 3) return "FAIL";
-  return /report\s+saved/i.test(md) ? "PASS" : "FAIL";
+function checkAcceptanceCriteriaResearch(md: string): CheckResult {
+  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING))
+    return fail("\"## Acceptance Criteria\" heading not found");
+  const count = acceptanceCriteriaCheckboxes(md);
+  if (count < 3)
+    return fail(
+      `minimum 3 acceptance criteria checkboxes required — found ${count}`
+    );
+  if (!/report\s+saved/i.test(md))
+    return fail("missing \"report saved\" reference in acceptance criteria");
+  return pass();
 }
 
-function checkReportFormat(md: string): SectionStatus {
-  return headingPresent(md, REPORT_FORMAT_HEADING) ? "PASS" : "FAIL";
+function checkReportFormat(md: string): CheckResult {
+  if (!headingPresent(md, REPORT_FORMAT_HEADING))
+    return fail("\"## Report Format\" heading not found");
+  return pass();
 }
 
-function checkReproSteps(md: string): SectionStatus {
-  return headingPresent(md, REPRO_HEADING) ? "PASS" : "FAIL";
+function checkReproSteps(md: string): CheckResult {
+  if (!headingPresent(md, REPRO_HEADING))
+    return fail("\"## Repro\" heading not found");
+  return pass();
 }
 
-function checkBugFixSection(md: string): SectionStatus {
-  if (!headingPresent(md, FIX_HEADING)) return "FAIL";
-  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING)) return "FAIL";
-  return acceptanceCriteriaCheckboxes(md) >= 2 ? "PASS" : "FAIL";
+function checkBugFixSection(md: string): CheckResult {
+  if (!headingPresent(md, FIX_HEADING))
+    return fail("\"## Fix\" heading not found");
+  if (!headingPresent(md, ACCEPTANCE_CRITERIA_HEADING))
+    return fail("\"## Acceptance Criteria\" heading not found");
+  const count = acceptanceCriteriaCheckboxes(md);
+  if (count < 2)
+    return fail(
+      `minimum 2 acceptance criteria checkboxes required — found ${count}`
+    );
+  return pass();
 }
 
-function checkMigrationSummaryBug(md: string): SectionStatus {
-  if (!headingPresent(md, MIGRATION_HEADING)) return "FAIL";
+function checkMigrationSummaryBug(md: string): CheckResult {
+  if (!headingPresent(md, MIGRATION_HEADING))
+    return fail("\"## Subject Migration Summary\" heading not found");
   const body = sectionBody(md, MIGRATION_HEADING);
-  return openQuestionsNotEmpty(body) ? "PASS" : "FAIL";
+  if (!openQuestionsNotEmpty(body))
+    return fail("\"Open questions\" row is empty or missing in migration table");
+  return pass();
 }
 
 // ─── section definitions per spec type ────────────────────────────────────
@@ -170,7 +239,7 @@ function checkMigrationSummaryBug(md: string): SectionStatus {
 interface SectionDef {
   key: string;
   label: string;
-  check: (md: string) => SectionStatus;
+  check: (md: string) => CheckResult;
 }
 
 const FEAT_SECTIONS: SectionDef[] = [
@@ -252,10 +321,13 @@ export function scoreSpec(markdown: string, filename: string = ""): ScoreResult 
   const defs = SECTIONS_BY_TYPE[specType];
 
   const sections: Record<string, SectionStatus> = {};
+  const section_reasons: Record<string, string | null> = {};
   const section_labels: Record<string, string> = {};
   const section_order: string[] = [];
   for (const def of defs) {
-    sections[def.key] = def.check(markdown);
+    const result = def.check(markdown);
+    sections[def.key] = result.status;
+    section_reasons[def.key] = result.reason;
     section_labels[def.key] = def.label;
     section_order.push(def.key);
   }
@@ -275,6 +347,7 @@ export function scoreSpec(markdown: string, filename: string = ""): ScoreResult 
     passed,
     evaluated_at: new Date().toISOString(),
     sections,
+    section_reasons,
     section_order,
     section_labels,
     gates,
