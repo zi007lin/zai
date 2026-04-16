@@ -55,7 +55,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return new Response('issue_number required', { status: 400, headers: cors });
   }
 
-  const repo = body.repo ?? 'zi007lin/streettt-private';
+  const repo = body.repo ?? 'zi007lin/zai';
 
   const response = await fetch(
     `https://api.github.com/repos/${repo}/dispatches`,

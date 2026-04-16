@@ -54,7 +54,7 @@ function buildScoredSpec(
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
 
-const TARGET_REPO = "zi007lin/streettt-private";
+const TARGET_REPO = "zi007lin/zai";
 
 export default function AppPage() {
   const [filename, setFilename] = useState<string | null>(null);

@@ -63,7 +63,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     return new Response('title, body, label required', { status: 400, headers: cors });
   }
 
-  const repo = body.repo ?? 'zi007lin/streettt-private';
+  const repo = body.repo ?? 'zi007lin/zai';
 
   const ghHeaders: Record<string, string> = {
     'Authorization': `Bearer ${env.ZZV_DISPATCH_TOKEN}`,
