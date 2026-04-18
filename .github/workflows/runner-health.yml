@@ -1,0 +1,70 @@
+name: Runner health check
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: [self-hosted, contabo, zilin, zai]
+    timeout-minutes: 5
+    steps:
+      - name: Derive HOME if unset
+        run: |
+          if [ -z "$HOME" ]; then
+            HOME="$(getent passwd "$(id -un)" | cut -d: -f6)"
+            echo "HOME=$HOME" >> "$GITHUB_ENV"
+            echo "::warning::HOME was unset; derived $HOME"
+          fi
+          echo "PATH=$HOME/.npm-global/bin:$HOME/.local/bin:$PATH" >> "$GITHUB_ENV"
+
+      - name: Claude Code CLI present
+        run: |
+          which claude
+          claude --version
+
+      - name: MAX OAuth state present
+        run: |
+          test -d "$HOME/.claude" && ls "$HOME/.claude/" | head
+
+      - name: npm-global on PATH
+        run: |
+          case ":$PATH:" in
+            *":$HOME/.npm-global/bin:"*) echo "ok" ;;
+            *) echo "npm-global not on PATH"; exit 1 ;;
+          esac
+
+      - name: Notify Telegram on failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          TEXT="$(cat <<EOF
+          🚨 *ZAI Runner Health FAILED*
+
+          Repo: \`${{ github.repository }}\`
+          Run: [${{ github.run_id }}](${RUN_URL})
+          Time: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+          Consult the runner runbook in the private layer.
+          EOF
+          )"
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${TEXT}" \
+            --data-urlencode "parse_mode=Markdown" \
+            --data-urlencode "disable_web_page_preview=true"
+
+      - name: Notify Telegram on manual success
+        if: success() && github.event_name == 'workflow_dispatch'
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -sf -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=✅ ZAI runner health OK (manual check)" \
+            --data-urlencode "parse_mode=Markdown"
