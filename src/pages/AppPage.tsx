@@ -4,6 +4,7 @@ import ScorePanel from "../components/ScorePanel";
 import ScoreExample from "../components/ScoreExample";
 import PipelineSteps from "../components/PipelineSteps";
 import { scoreSpec, type ScoreResult } from "../lib/scoreSpec";
+import { renderScoredSpec } from "../lib/renderScoredSpec";
 import { SPEC_TEMPLATE } from "../lib/specTemplate";
 
 function downloadBlob(filename: string, contents: string) {
@@ -16,40 +17,6 @@ function downloadBlob(filename: string, contents: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function buildScoredSpec(
-  originalFilename: string,
-  originalMarkdown: string,
-  result: ScoreResult
-): string {
-  const lines: string[] = [];
-  lines.push(originalMarkdown.replace(/\s+$/, ""));
-  lines.push("");
-  lines.push("---");
-  lines.push("");
-  lines.push("## ZAI Spec Score");
-  lines.push("");
-  lines.push(`- **Rubric version:** ${result.rubric_version}`);
-  lines.push(`- **Spec type:** ${result.spec_type}`);
-  lines.push(`- **Evaluated at:** ${result.evaluated_at}`);
-  lines.push(`- **Score:** ${result.score}`);
-  lines.push(`- **Passed:** ${result.passed ? "YES" : "NO"}`);
-  lines.push("");
-  lines.push("| Section | Status |");
-  lines.push("|---|---|");
-  for (const [key, status] of Object.entries(result.sections)) {
-    lines.push(`| ${key} | ${status} |`);
-  }
-  if (result.gates.length > 0) {
-    lines.push("");
-    lines.push("### Pre-deploy gates");
-    for (const g of result.gates) lines.push(`- [ ] ${g}`);
-  }
-  lines.push("");
-  lines.push(`_Source: ${originalFilename}_`);
-  lines.push("");
-  return lines.join("\n");
 }
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
@@ -98,7 +65,7 @@ export default function AppPage() {
 
   const handleDownloadScored = useCallback(() => {
     if (!filename || !markdown || !result) return;
-    const out = buildScoredSpec(filename, markdown, result);
+    const out = renderScoredSpec(filename, markdown, result);
     const scoredName = filename.replace(/\.md$/i, "") + ".scored.md";
     downloadBlob(scoredName, out);
   }, [filename, markdown, result]);
@@ -108,7 +75,7 @@ export default function AppPage() {
     setImplState("dispatching");
     setErrorMsg("");
     try {
-      const scoredBody = buildScoredSpec(filename, markdown, result);
+      const scoredBody = renderScoredSpec(filename, markdown, result);
       const titleSlug = filename.replace(/\.md$/i, "").replace(/^.*__/, "");
       const issueRes = await fetch("/api/issue", {
         method: "POST",
@@ -166,9 +133,9 @@ export default function AppPage() {
           className="mt-4 text-[var(--zai-muted)] max-w-2xl"
           style={{ fontSize: "1.0625rem", lineHeight: 1.7 }}
         >
-          Upload a spec file to get a deterministic 7-section score. No LLM
-          judgment — pure structural analysis. Structural checks. Human review
-          still required.
+          Upload a spec file to get a deterministic per-type rubric score
+          (5–9 structural checks depending on spec type). No LLM judgment —
+          pure structural analysis. Human review still required.
         </p>
       </section>
     ),

@@ -34,7 +34,7 @@ export class SpecTypeError extends Error {
   }
 }
 
-const RUBRIC_VERSION = "1.2.1";
+const RUBRIC_VERSION = "1.3.0";
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 

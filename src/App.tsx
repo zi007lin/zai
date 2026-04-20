@@ -1,6 +1,7 @@
 import { useState } from "react";
 import TopBar from "./components/TopBar";
 import Footer from "./components/Footer";
+import MigrationBanner from "./components/MigrationBanner";
 import HomePage from "./pages/HomePage";
 import AppPage from "./pages/AppPage";
 import PricingPage from "./pages/PricingPage";
@@ -26,6 +27,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <MigrationBanner />
       <TopBar current={route} onNavigate={navigate} />
       <main className="flex-1">
         {route === "home" && <HomePage onNavigate={navigate} />}

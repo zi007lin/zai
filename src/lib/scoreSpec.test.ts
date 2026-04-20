@@ -693,8 +693,8 @@ describe("scoreSpec — gates and meta", () => {
     expect(r.gates[0]).toMatch(/chain/i);
   });
 
-  it("rubric version is 1.2.1", () => {
-    expect(scoreSpec(featSpec, "2026-04-13__feat__x.md").rubric_version).toBe("1.2.1");
+  it("rubric version is 1.3.0", () => {
+    expect(scoreSpec(featSpec, "2026-04-13__feat__x.md").rubric_version).toBe("1.3.0");
   });
 
   it("non-matching filename throws SpecTypeError (previously silently fell back to feat)", () => {
