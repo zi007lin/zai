@@ -1,6 +1,6 @@
 # ZAI SYSTEM INSTRUCTIONS
 
-**Version:** 1.2 (2026-04-19)
+**Version:** 1.3 (2026-04-20)
 **ZAI:** the structural validation service running at `zai.htu.io/app`
 **Purpose:** authoritative spec for what ZAI validates, how it scores, and how humans interact with it
 **Canonical location:** `docs/ZAI_SYSTEM_INSTRUCTIONS.md` in `zi007lin/zai`
@@ -423,6 +423,7 @@ OpenAPI at `zai.htu.io/openapi.json`.
 | 1.0 | 2026-04-19 | Initial. Rubrics for FEAT/BUG/SPEC/CHORE/RESEARCH/UX+BRAND. Model declaration + detection + cross-check. Scoring with models panel. Tiers: DIY / Copilot / Pro / Enterprise. |
 | 1.1 | 2026-04-19 | Tier "Copilot"→"Assist" (Microsoft trademark). BYOK + Cloudflare-free-default. Internal prompts explicitly non-public. 12-bundle industry catalog. Accessibility default. |
 | 1.2 | 2026-04-19 | Added `legal_trigger_declaration` check to every building-type rubric (RESEARCH exempt; reports are non-building). Added `contract_law_signals` bundle (structural only, mandatory disclaimer banner, jurisdiction-agnostic, explicitly not legal advice). Added future `legal_services` bundle slot for 2027+ partner firm use. Rubric counts: FEAT 8→9, BUG 6→7, SPEC 5→6, CHORE 4→5, REFACTOR introduced as first-class type at 9 checks (was previously silently folded into CHORE in implementation — see BUG 2026-04-19), RESEARCH unchanged at 6 (non-building), UX/BRAND 5→6. |
+| 1.3 | 2026-04-20 | Enterprise disclosure footer rendered on `.scored.md` output for specs carrying any trigger bundle (`healthcare`, `fintech`, `financial_advisory`, `legal_services`, `government`). Canonical text sourced from `docs/brand/enterprise-disclosure.md`; drift-detection test asserts verbatim equality. Rendering lives in the output layer (`src/lib/renderScoredSpec.ts`), not the scoring engine — `ScoreResult` shape unchanged. No rubric count changes. Part of the ZiLin Brand Migration REFACTOR Phase 1 (2026-04-19). |
 ```
 
 ---
