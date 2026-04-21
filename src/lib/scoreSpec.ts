@@ -34,7 +34,23 @@ export class SpecTypeError extends Error {
   }
 }
 
-const RUBRIC_VERSION = "1.3.0";
+const RUBRIC_VERSION = "1.3.1";
+
+// Per-type Intent word caps. FEAT/BUG/UX/BRAND stay at 150 where compression
+// is a virtue; CHORE stays at 100; SPEC and REFACTOR rise to 250 because they
+// must frame actors, scope, deferrals, reversibility; RESEARCH rises to 200
+// to set up context for the research questions that follow.
+export const INTENT_CAPS: Record<SpecType, number> = {
+  feat: 150,
+  bug: 150,
+  hotfix: 150,
+  spec: 250,
+  chore: 100,
+  refactor: 250,
+  research: 200,
+  ux: 150,
+  brand: 150,
+};
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 
@@ -134,32 +150,24 @@ const RULES_OR_CONTENT_HEADING = /^##\s+(Rules|Content)\b/mi;
 
 // ─── section checks ───────────────────────────────────────────────────────
 
-function checkIntentStrict(md: string): CheckResult {
-  if (!headingPresent(md, INTENT_HEADING))
-    return fail('"## Intent" heading not found');
-  const body = sectionBody(md, INTENT_HEADING);
-  const words = wordCount(body);
-  if (words === 0) return fail("intent section is empty");
-  if (words > 150)
-    return fail(`intent exceeds 150-word limit — found ${words} words`);
-  return pass();
-}
-
-function checkIntentChore(md: string): CheckResult {
-  if (!headingPresent(md, INTENT_HEADING))
-    return fail('"## Intent" heading not found');
-  const body = sectionBody(md, INTENT_HEADING);
-  const words = wordCount(body);
-  if (words === 0) return fail("intent section is empty");
-  if (words > 100)
-    return fail(`intent exceeds 100-word limit for chore — found ${words} words`);
-  return pass();
-}
-
-function checkIntentLoose(md: string): CheckResult {
-  if (!headingPresent(md, INTENT_HEADING))
-    return fail('"## Intent" heading not found');
-  return pass();
+function makeIntentCheck(specType: SpecType): (md: string) => CheckResult {
+  const cap = INTENT_CAPS[specType];
+  return (md: string): CheckResult => {
+    if (!headingPresent(md, INTENT_HEADING))
+      return fail('"## Intent" heading not found');
+    const body = sectionBody(md, INTENT_HEADING);
+    const words = wordCount(body);
+    if (words === 0) return fail("intent section is empty");
+    if (words > cap) {
+      return fail(
+        `Intent exceeds ${cap}-word cap for spec type ${specType.toUpperCase()} (found ${words} words). ` +
+          `Consider: (a) moving context into a Draft-of-thoughts section, ` +
+          `(b) moving decisions into the Decision Tree, ` +
+          `(c) if this is a multi-part ${specType}, decomposing into multiple specs.`,
+      );
+    }
+    return pass();
+  };
 }
 
 function checkDecisionTree(md: string): CheckResult {
@@ -347,7 +355,7 @@ interface SectionDef {
 }
 
 const FEAT_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentStrict },
+  { key: "intent", label: "Intent", check: makeIntentCheck("feat") },
   { key: "decision_tree", label: "Decision Tree", check: checkDecisionTree },
   { key: "final_spec", label: "Final Spec", check: checkFinalSpec },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 3) },
@@ -359,7 +367,7 @@ const FEAT_SECTIONS: SectionDef[] = [
 ];
 
 const BUG_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentLoose },
+  { key: "intent", label: "Intent", check: makeIntentCheck("bug") },
   { key: "repro", label: "Repro", check: checkRepro },
   { key: "fix", label: "Fix", check: checkFix },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
@@ -368,10 +376,18 @@ const BUG_SECTIONS: SectionDef[] = [
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
 ];
 
-const HOTFIX_SECTIONS: SectionDef[] = BUG_SECTIONS;
+const HOTFIX_SECTIONS: SectionDef[] = [
+  { key: "intent", label: "Intent", check: makeIntentCheck("hotfix") },
+  { key: "repro", label: "Repro", check: checkRepro },
+  { key: "fix", label: "Fix", check: checkFix },
+  { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
+  { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
+  { key: "files", label: "Files", check: checkFiles },
+  { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+];
 
 const SPEC_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentStrict },
+  { key: "intent", label: "Intent", check: makeIntentCheck("spec") },
   { key: "decision_tree", label: "Decision Tree", check: checkDecisionTree },
   { key: "rules_or_content", label: "Rules or Content", check: checkRulesOrContent },
   { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
@@ -380,7 +396,7 @@ const SPEC_SECTIONS: SectionDef[] = [
 ];
 
 const CHORE_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentChore },
+  { key: "intent", label: "Intent", check: makeIntentCheck("chore") },
   { key: "action", label: "Action", check: checkAction },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 1) },
   { key: "files", label: "Files", check: checkFiles },
@@ -388,7 +404,7 @@ const CHORE_SECTIONS: SectionDef[] = [
 ];
 
 const REFACTOR_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentStrict },
+  { key: "intent", label: "Intent", check: makeIntentCheck("refactor") },
   { key: "decision_tree", label: "Decision Tree", check: checkDecisionTree },
   { key: "final_spec", label: "Final Spec", check: checkFinalSpec },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 3) },
@@ -400,7 +416,7 @@ const REFACTOR_SECTIONS: SectionDef[] = [
 ];
 
 const RESEARCH_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentStrict },
+  { key: "intent", label: "Intent", check: makeIntentCheck("research") },
   { key: "research_questions", label: "Research Questions", check: checkResearchQuestions },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: checkAcceptanceCriteriaResearch },
   { key: "report_format", label: "Report Format", check: checkReportFormat },
@@ -409,7 +425,7 @@ const RESEARCH_SECTIONS: SectionDef[] = [
 ];
 
 const UX_SECTIONS: SectionDef[] = [
-  { key: "intent", label: "Intent", check: checkIntentStrict },
+  { key: "intent", label: "Intent", check: makeIntentCheck("ux") },
   { key: "jobs_to_be_done", label: "Jobs To Be Done", check: checkJobsToBeDone },
   { key: "design_rationale", label: "Design Rationale", check: checkDesignRationale },
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
@@ -417,7 +433,14 @@ const UX_SECTIONS: SectionDef[] = [
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
 ];
 
-const BRAND_SECTIONS: SectionDef[] = UX_SECTIONS;
+const BRAND_SECTIONS: SectionDef[] = [
+  { key: "intent", label: "Intent", check: makeIntentCheck("brand") },
+  { key: "jobs_to_be_done", label: "Jobs To Be Done", check: checkJobsToBeDone },
+  { key: "design_rationale", label: "Design Rationale", check: checkDesignRationale },
+  { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
+  { key: "assets_files", label: "Assets / Files", check: checkFilesOrSchema },
+  { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+];
 
 export const SECTIONS_BY_TYPE: Record<SpecType, SectionDef[]> = {
   feat: FEAT_SECTIONS,

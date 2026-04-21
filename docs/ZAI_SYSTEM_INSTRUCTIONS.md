@@ -1,6 +1,6 @@
 # ZAI SYSTEM INSTRUCTIONS
 
-**Version:** 1.3 (2026-04-20)
+**Version:** 1.3.1 (2026-04-20)
 **ZAI:** the structural validation service running at `zai.htu.io/app`
 **Purpose:** authoritative spec for what ZAI validates, how it scores, and how humans interact with it
 **Canonical location:** `docs/ZAI_SYSTEM_INSTRUCTIONS.md` in `zi007lin/zai`
@@ -36,7 +36,7 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | `## Intent` H2, ≤150 tokens (hyphen-split) |
+| 1 | Intent | `## Intent` H2, ≤150 words |
 | 2 | Decision Tree | `## Decision Tree` H2 + markdown table + `### Trigger for change` subsection |
 | 3 | Final Spec | `## Final Spec` H2 present |
 | 4 | Acceptance Criteria | `## Acceptance Criteria` H2 with checkbox list |
@@ -54,7 +54,7 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | `## Intent` H2, ≤150 tokens |
+| 1 | Intent | `## Intent` H2, ≤150 words |
 | 2 | Repro | `## Repro` H2 + Preconditions / Steps / Expected / Actual / Root cause |
 | 3 | Fix | `## Fix` H2, layered (`### Layer 1 — ...`) |
 | 4 | Acceptance Criteria | `## Acceptance Criteria` H2 |
@@ -66,7 +66,7 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | ≤150 tokens |
+| 1 | Intent | ≤250 words — SPEC must frame actors, scope, and deferrals |
 | 2 | Decision Tree | Table + Trigger for change |
 | 3 | Rules or content | `## Rules` / `## Content` / domain H2 |
 | 4 | Subject Migration Summary | Standard |
@@ -77,7 +77,7 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | ≤100 tokens |
+| 1 | Intent | ≤100 words |
 | 2 | Action | `## Action` H2 with numbered steps |
 | 3 | Acceptance Criteria | Standard |
 | 4 | Files | Standard |
@@ -89,7 +89,7 @@ FEAT minus Game Theory, plus `## Migration Plan` with rollback procedure. Legal 
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | `## Intent` H2, ≤150 tokens |
+| 1 | Intent | `## Intent` H2, ≤250 words — REFACTOR must carry trigger + scope split + reversibility caveat |
 | 2 | Decision Tree | `## Decision Tree` H2 + table + `### Trigger for change` subsection |
 | 3 | Final Spec | `## Final Spec` H2 present |
 | 4 | Acceptance Criteria | `## Acceptance Criteria` H2 with checkbox list |
@@ -105,7 +105,7 @@ Research specs produce decision-ready reports; they do not ship code, so Legal t
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | `## Intent` H2, ≤150 tokens |
+| 1 | Intent | `## Intent` H2, ≤200 words — RESEARCH sets up context for the research questions that follow |
 | 2 | Research Questions | `## Research Questions` H2 with numbered list |
 | 3 | Acceptance Criteria | `## Acceptance Criteria` H2 defining "report is complete when…" |
 | 4 | Report Format | `## Report Format` H2 describing output structure |
@@ -116,7 +116,7 @@ Research specs produce decision-ready reports; they do not ship code, so Legal t
 
 | # | Check | Pattern |
 |---|---|---|
-| 1 | Intent | ≤150 tokens |
+| 1 | Intent | ≤150 words |
 | 2 | User Jobs | `## Jobs To Be Done` H2 with 3–5 jobs |
 | 3 | Design Rationale | `## Design Rationale` H2 including `### Interaction of Color` |
 | 4 | Acceptance Criteria | Standard |
@@ -424,6 +424,7 @@ OpenAPI at `zai.htu.io/openapi.json`.
 | 1.1 | 2026-04-19 | Tier "Copilot"→"Assist" (Microsoft trademark). BYOK + Cloudflare-free-default. Internal prompts explicitly non-public. 12-bundle industry catalog. Accessibility default. |
 | 1.2 | 2026-04-19 | Added `legal_trigger_declaration` check to every building-type rubric (RESEARCH exempt; reports are non-building). Added `contract_law_signals` bundle (structural only, mandatory disclaimer banner, jurisdiction-agnostic, explicitly not legal advice). Added future `legal_services` bundle slot for 2027+ partner firm use. Rubric counts: FEAT 8→9, BUG 6→7, SPEC 5→6, CHORE 4→5, REFACTOR introduced as first-class type at 9 checks (was previously silently folded into CHORE in implementation — see BUG 2026-04-19), RESEARCH unchanged at 6 (non-building), UX/BRAND 5→6. |
 | 1.3 | 2026-04-20 | Enterprise disclosure footer rendered on `.scored.md` output for specs carrying any trigger bundle (`healthcare`, `fintech`, `financial_advisory`, `legal_services`, `government`). Canonical text sourced from `docs/brand/enterprise-disclosure.md`; drift-detection test asserts verbatim equality. Rendering lives in the output layer (`src/lib/renderScoredSpec.ts`), not the scoring engine — `ScoreResult` shape unchanged. No rubric count changes. Part of the ZiLin Brand Migration REFACTOR Phase 1 (2026-04-19). |
+| 1.3.1 | 2026-04-20 | Per-type Intent word caps (was uniform 150 with CHORE exception at 100). SPEC 250, REFACTOR 250, RESEARCH 200 — these types must frame actors/scope/deferrals, carry trigger + reversibility caveat, or set up context for research questions. FEAT/BUG/UX/BRAND unchanged at 150; CHORE unchanged at 100. `INTENT_CAPS` lookup in `scoreSpec.ts` replaces the previous flat constant. Drift-detection test extended with an Intent-cap column in the Appendix table. Error message on cap violation now names the cap, spec type, and suggests relocation or decomposition. Additive liberalization — no previously passing spec regresses. Also tightens the BUG/HOTFIX Intent check, which was previously loose (no cap enforced); per docs the cap has always been 150, so this aligns code to doc. Closes #51. |
 ```
 
 ---
@@ -432,23 +433,24 @@ OpenAPI at `zai.htu.io/openapi.json`.
 
 The Layer 3 drift-detection test asserts that rubric arrays in `scoreSpec.ts` match the counts documented above. The authoritative pairs:
 
-| Type | Count | Ordered section IDs (canonical) |
-|---|---|---|
-| `feat` | 9 | `intent, decision_tree, final_spec, acceptance_criteria, game_theory, migration_summary, files_list, models_applied, legal_triggers` |
-| `bug` | 7 | `intent, repro, fix, acceptance_criteria, migration_summary, files, legal_triggers` |
-| `spec` | 6 | `intent, decision_tree, rules_or_content, migration_summary, files_schema, legal_triggers` |
-| `chore` | 5 | `intent, action, acceptance_criteria, files, legal_triggers` |
-| `refactor` | 9 | `intent, decision_tree, final_spec, acceptance_criteria, migration_summary, files_list, models_applied, migration_plan, legal_triggers` |
-| `research` | 6 | `intent, research_questions, acceptance_criteria, report_format, migration_summary, files` |
-| `ux` | 6 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
-| `brand` | 6 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
+| Type | Count | Intent cap | Ordered section IDs (canonical) |
+|---|---|---|---|
+| `feat` | 9 | 150 | `intent, decision_tree, final_spec, acceptance_criteria, game_theory, migration_summary, files_list, models_applied, legal_triggers` |
+| `bug` | 7 | 150 | `intent, repro, fix, acceptance_criteria, migration_summary, files, legal_triggers` |
+| `spec` | 6 | 250 | `intent, decision_tree, rules_or_content, migration_summary, files_schema, legal_triggers` |
+| `chore` | 5 | 100 | `intent, action, acceptance_criteria, files, legal_triggers` |
+| `refactor` | 9 | 250 | `intent, decision_tree, final_spec, acceptance_criteria, migration_summary, files_list, models_applied, migration_plan, legal_triggers` |
+| `research` | 6 | 200 | `intent, research_questions, acceptance_criteria, report_format, migration_summary, files` |
+| `ux` | 6 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
+| `brand` | 6 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
 
 Drift test implementation notes:
 - Parse each `### X rubric (N checks)` heading in this doc
 - Assert N equals the length of the corresponding `*_SECTIONS` array in `scoreSpec.ts`
 - Parse the section IDs from this Appendix (not from the prose tables, which use human labels)
-- Fail CI with a clear diagnostic if any type's count or ordered IDs disagree
+- Assert the Intent cap column matches `INTENT_CAPS` in `scoreSpec.ts`
+- Fail CI with a clear diagnostic if any type's count, ordered IDs, or Intent cap disagree
 
 ---
 
-*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.2*
+*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.3.1*
