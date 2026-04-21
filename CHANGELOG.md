@@ -9,6 +9,31 @@ Versioning follows [SemVer](https://semver.org/) — but note that the `RUBRIC_V
 
 _(No unreleased changes.)_
 
+## [1.3.1] — 2026-04-20
+
+Closes #51. Per-type Intent word caps replace the previous uniform 150-word cap (with CHORE as a 100-word exception). SPEC, REFACTOR, and RESEARCH need more framing than FEAT/BUG — the uniform cap forced authors to compress substantive context or split content into sections where it didn't belong. Additive liberalization; no previously passing spec regresses.
+
+### Added
+
+- `INTENT_CAPS: Record<SpecType, number>` lookup exported from `src/lib/scoreSpec.ts`. Values: FEAT 150, BUG 150, HOTFIX 150, UX 150, BRAND 150, CHORE 100, SPEC 250, REFACTOR 250, RESEARCH 200.
+- `makeIntentCheck(specType)` factory — single capped Intent check parameterised by type; replaces the three separate strict/chore/loose variants.
+- Drift-detection test extended: `docs/ZAI_SYSTEM_INSTRUCTIONS.md` Appendix now carries an Intent cap column, and `scoreSpec.test.ts` asserts `INTENT_CAPS` matches it for every documented type.
+- Per-type Intent cap fixtures in `scoreSpec.test.ts` — boundary pass/fail cases for SPEC 240/260, REFACTOR 245/260, RESEARCH 195/210, plus FEAT 145 and CHORE 95 regression guards.
+
+### Changed
+
+- `RUBRIC_VERSION` bumped `1.3.0` → `1.3.1` (patch-level; additive liberalization).
+- `docs/ZAI_SYSTEM_INSTRUCTIONS.md` § 2 — Intent rows per rubric type now state the actual cap (150 / 100 / 250 / 200) with the rationale for types whose cap was raised.
+- `docs/ZAI_SYSTEM_INSTRUCTIONS.md` Appendix — rubric-count summary gains an Intent cap column; drift test parses a 4-column row regex.
+- Intent-cap error message — was `"intent exceeds N-word limit — found K words"`; is now `"Intent exceeds N-word cap for spec type TYPE (found K words). Consider: (a) moving context into a Draft-of-thoughts section, (b) moving decisions into the Decision Tree, (c) if this is a multi-part <type>, decomposing into multiple specs."` Teachable failure rather than frustrating one.
+- BUG and HOTFIX Intent checks now enforce a 150-word cap. Previously `checkIntentLoose` skipped the cap entirely, which drifted from the documented BUG/HOTFIX rubric (≤150 words). This aligns code with doc.
+
+### Not changed
+
+- Rubric counts or required section IDs per type.
+- `ScoreResult` shape.
+- Tokenization — Intent body is still whitespace-split via `wordCount`; the conceptual `hyphenSplitTokens` discussed in the spec was not adopted (out of scope for the per-type-cap fix).
+
 ## [1.3.0] — 2026-04-20
 
 Part of the ZiLin Brand Family Migration REFACTOR Phase 1 (issue #48). Continues the `zi007lin/zai` → `zi007lin/zilin-spec` rename; the repo rename itself is a Phase 2 operator action, not in this release.

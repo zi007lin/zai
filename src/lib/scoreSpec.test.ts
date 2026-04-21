@@ -7,6 +7,7 @@ import {
   SpecTypeError,
   RUBRIC_SECTION_KEYS,
   KNOWN_TYPES,
+  INTENT_CAPS,
 } from "./scoreSpec";
 import type { SpecType } from "./scoreSpec";
 
@@ -365,7 +366,8 @@ describe("scoreSpec — feat", () => {
     );
     const r = scoreSpec(md, "2026-04-13__feat__x.md");
     expect(r.sections.intent).toBe("FAIL");
-    expect(r.section_reasons.intent).toMatch(/exceeds 150-word limit/);
+    expect(r.section_reasons.intent).toMatch(/exceeds 150-word cap/);
+    expect(r.section_reasons.intent).toMatch(/FEAT/);
   });
 
   it("decision_tree FAILs without a table", () => {
@@ -523,7 +525,8 @@ describe("scoreSpec — chore", () => {
     const md = choreSpec.replace(/## Intent\nBump dep\.\n/, `## Intent\n${long}\n`);
     const r = scoreSpec(md, "2026-04-13__chore__x.md");
     expect(r.sections.intent).toBe("FAIL");
-    expect(r.section_reasons.intent).toMatch(/100-word limit/);
+    expect(r.section_reasons.intent).toMatch(/100-word cap/);
+    expect(r.section_reasons.intent).toMatch(/CHORE/);
   });
 
   it("action FAILs when no numbered steps", () => {
@@ -693,8 +696,8 @@ describe("scoreSpec — gates and meta", () => {
     expect(r.gates[0]).toMatch(/chain/i);
   });
 
-  it("rubric version is 1.3.0", () => {
-    expect(scoreSpec(featSpec, "2026-04-13__feat__x.md").rubric_version).toBe("1.3.0");
+  it("rubric version is 1.3.1", () => {
+    expect(scoreSpec(featSpec, "2026-04-13__feat__x.md").rubric_version).toBe("1.3.1");
   });
 
   it("non-matching filename throws SpecTypeError (previously silently fell back to feat)", () => {
@@ -712,11 +715,13 @@ describe("scoreSpec — gates and meta", () => {
 // doc-vs-code drift — the same class of bug as the refactor→chore downgrade
 // that this PR fixes.
 
-const APPENDIX_COUNT_TABLE_ROW = /^\|\s*`(\w+)`\s*\|\s*(\d+)\s*\|\s*`([^`]+)`\s*\|/gm;
+const APPENDIX_COUNT_TABLE_ROW =
+  /^\|\s*`(\w+)`\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*`([^`]+)`\s*\|/gm;
 
 interface AppendixEntry {
   type: string;
   count: number;
+  intentCap: number;
   keys: string[];
 }
 
@@ -730,7 +735,8 @@ function parseAppendix(doc: string): AppendixEntry[] {
     entries.push({
       type: match[1],
       count: Number(match[2]),
-      keys: match[3].split(",").map((k) => k.trim()),
+      intentCap: Number(match[3]),
+      keys: match[4].split(",").map((k) => k.trim()),
     });
   }
   return entries;
@@ -786,5 +792,218 @@ describe("drift-detection — scoreSpec vs ZAI_SYSTEM_INSTRUCTIONS.md §Appendix
   it("hotfix is not in the appendix (aliased to bug at runtime)", () => {
     const types = appendix.map((e) => e.type);
     expect(types).not.toContain("hotfix");
+  });
+
+  it("Intent cap in scoreSpec matches documented cap for every type", () => {
+    for (const entry of appendix) {
+      const implCap = INTENT_CAPS[entry.type as SpecType];
+      expect(
+        implCap,
+        `type "${entry.type}": doc says Intent cap ${entry.intentCap}, impl has ${implCap}`,
+      ).toBe(entry.intentCap);
+    }
+  });
+
+  it("SPEC, REFACTOR, RESEARCH have documented caps above 150", () => {
+    expect(INTENT_CAPS.spec).toBe(250);
+    expect(INTENT_CAPS.refactor).toBe(250);
+    expect(INTENT_CAPS.research).toBe(200);
+  });
+
+  it("FEAT, BUG, UX, BRAND retain 150-word Intent cap", () => {
+    expect(INTENT_CAPS.feat).toBe(150);
+    expect(INTENT_CAPS.bug).toBe(150);
+    expect(INTENT_CAPS.ux).toBe(150);
+    expect(INTENT_CAPS.brand).toBe(150);
+  });
+
+  it("CHORE retains its 100-word Intent cap", () => {
+    expect(INTENT_CAPS.chore).toBe(100);
+  });
+});
+
+// ─── per-type Intent cap fixtures ────────────────────────────────────────
+//
+// Mirrors the fixture list in issues/2026-04-20__bug__intent-token-cap-per-type-v1
+// §Files. Each fixture exercises a boundary near the documented cap.
+
+function makeWords(count: number): string {
+  return Array.from({ length: count }, (_, i) => `word${i}`).join(" ");
+}
+
+const specBase = (intentBody: string) => `# spec title
+
+## Intent
+${intentBody}
+
+## Decision Tree
+| Option | Risk | Decision |
+|---|---|---|
+| A | low | ✅ |
+
+Trigger for change: policy audit.
+
+## Rules
+Widget rules live here.
+
+## Subject Migration Summary
+| | |
+|---|---|
+| Open questions | enforcement cadence |
+
+## Files
+\`\`\`
+docs/widget-rules.md
+\`\`\`
+
+## Legal triggers
+None.
+`;
+
+const refactorBase = (intentBody: string) => `# refactor title
+
+## Intent
+${intentBody}
+
+## Decision Tree
+| Option | Risk | Decision |
+|---|---|---|
+| keep | high | ❌ |
+| rename | low | ✅ |
+
+Trigger for change: TM collision risk.
+
+## Final Spec
+Full rename table.
+
+## Acceptance Criteria
+- [ ] old name gone
+- [ ] new name live
+- [ ] redirect in place
+
+## Subject Migration Summary
+| | |
+|---|---|
+| What | Rename |
+| Open questions | banner copy final |
+
+## Files created / updated
+\`\`\`
+docs/brand/rationale.md
+\`\`\`
+
+## Models Applied
+- #2 Decision Tree
+- #8 Swiss Cheese
+
+## Migration Plan
+Phase 0 prep → Phase 1 dual-run → Phase 2 cutover.
+
+### Rollback
+Trigger: TM opposition. Reverse DNS, revert docs.
+
+## Legal triggers
+None.
+`;
+
+const researchBase = (intentBody: string) => `# research title
+
+## Intent
+${intentBody}
+
+## Research Questions
+
+### Q1 — one
+Details.
+
+## Acceptance Criteria
+- [ ] answered Q1
+- [ ] confirmed scope
+- [ ] report saved to issues/reports/example.md
+
+## Report Format
+The report structure is documented here.
+
+## Subject Migration Summary
+| | |
+|---|---|
+| Open questions | list here |
+
+## Files
+\`\`\`
+issues/reports/example.md
+\`\`\`
+`;
+
+describe("scoreSpec — per-type Intent caps", () => {
+  it("spec-intent-240-pass: SPEC at 240 words passes under 250-word cap", () => {
+    const r = scoreSpec(specBase(makeWords(240)), "2026-04-20__spec__fixture.md");
+    expect(r.sections.intent).toBe("PASS");
+    expect(r.passed).toBe(true);
+  });
+
+  it("spec-intent-260-fail: SPEC at 260 words fails under 250-word cap", () => {
+    const r = scoreSpec(specBase(makeWords(260)), "2026-04-20__spec__fixture.md");
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toMatch(/250-word cap/);
+    expect(r.section_reasons.intent).toMatch(/SPEC/);
+    expect(r.section_reasons.intent).toMatch(/decomposing|Decision Tree|Draft-of-thoughts/);
+  });
+
+  it("refactor-intent-245-pass: REFACTOR at 245 words passes under 250-word cap", () => {
+    const r = scoreSpec(
+      refactorBase(makeWords(245)),
+      "2026-04-20__refactor__fixture.md",
+    );
+    expect(r.sections.intent).toBe("PASS");
+    expect(r.passed).toBe(true);
+  });
+
+  it("refactor-intent-260-fail: REFACTOR at 260 words fails under 250-word cap", () => {
+    const r = scoreSpec(
+      refactorBase(makeWords(260)),
+      "2026-04-20__refactor__fixture.md",
+    );
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toMatch(/250-word cap/);
+    expect(r.section_reasons.intent).toMatch(/REFACTOR/);
+  });
+
+  it("research-intent-195-pass: RESEARCH at 195 words passes under 200-word cap", () => {
+    const r = scoreSpec(
+      researchBase(makeWords(195)),
+      "2026-04-20__research__fixture.md",
+    );
+    expect(r.sections.intent).toBe("PASS");
+    expect(r.passed).toBe(true);
+  });
+
+  it("research-intent-210-fail: RESEARCH at 210 words fails under 200-word cap", () => {
+    const r = scoreSpec(
+      researchBase(makeWords(210)),
+      "2026-04-20__research__fixture.md",
+    );
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toMatch(/200-word cap/);
+    expect(r.section_reasons.intent).toMatch(/RESEARCH/);
+  });
+
+  it("feat-intent-145-pass: FEAT at 145 words still passes under unchanged 150-word cap", () => {
+    const r = scoreSpec(
+      featSpec.replace(
+        /## Intent\nA tight paragraph[^\n]*/,
+        `## Intent\n${makeWords(145)}`,
+      ),
+      "2026-04-13__feat__x.md",
+    );
+    expect(r.sections.intent).toBe("PASS");
+  });
+
+  it("chore-intent-95-pass: CHORE at 95 words still passes under unchanged 100-word cap", () => {
+    const r = scoreSpec(
+      choreSpec.replace(/## Intent\nBump dep\.\n/, `## Intent\n${makeWords(95)}\n`),
+      "2026-04-13__chore__x.md",
+    );
+    expect(r.sections.intent).toBe("PASS");
   });
 });
