@@ -8,6 +8,15 @@ jobs:
   impl:
     runs-on: [self-hosted, contabo, zilin, zai]
     timeout-minutes: 60
+    env:
+      # Per-repo dispatch-mode flags. Unset -> legacy (existing in-place behavior).
+      # Source of truth: repository variables on zi007lin/zai.
+      # See docs/router-dispatch-contract.md#mode-resolution.
+      ZAI_DISPATCH_MODE_STREETTT: ${{ vars.ZAI_DISPATCH_MODE_STREETTT }}
+      ZAI_DISPATCH_MODE_HTU_IO: ${{ vars.ZAI_DISPATCH_MODE_HTU_IO }}
+      ZAI_DISPATCH_MODE_HTU_FOUNDATION: ${{ vars.ZAI_DISPATCH_MODE_HTU_FOUNDATION }}
+      ZAI_DISPATCH_MODE_NYQEX: ${{ vars.ZAI_DISPATCH_MODE_NYQEX }}
+      ZAI_DISPATCH_MODE_ZAI: ${{ vars.ZAI_DISPATCH_MODE_ZAI }}
     steps:
       - name: Ensure Claude Code CLI on PATH
         run: |
@@ -30,15 +39,109 @@ jobs:
             echo "PATH=$HOME/.npm-global/bin:$HOME/.local/bin:$PATH"
           } >> "$GITHUB_ENV"
 
-      - name: Dispatch to ZAI router
+      - name: Resolve target repo and mode
+        id: resolve
         env:
           GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
         run: |
+          set -euo pipefail
+
           ISSUE_NUMBER="${{ github.event.client_payload.issue_number }}"
           if [ -z "$ISSUE_NUMBER" ]; then
-            echo "Error: issue_number not provided in client_payload"
+            echo "::error::issue_number not provided in client_payload"
             exit 1
           fi
-          echo "Routing implw $ISSUE_NUMBER for ${{ github.repository }}"
+
+          TARGET_REPO="${{ github.event.client_payload.target_repo }}"
+
+          if [ -z "$TARGET_REPO" ]; then
+            echo "client_payload.target_repo not set; parsing **Repo:** from issue body"
+            SPEC_BODY=$(gh issue view "$ISSUE_NUMBER" --repo "${{ github.repository }}" --json body -q .body)
+            TARGET_REPO=$(echo "$SPEC_BODY" \
+              | grep -oE '\*\*Repo:\*\*[[:space:]]+[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' \
+              | head -1 \
+              | awk '{print $2}' || true)
+          fi
+
+          if [ -z "$TARGET_REPO" ]; then
+            echo "::error::could not resolve target_repo from payload or spec body"
+            exit 1
+          fi
+
+          # Allow-list. Edits to this case statement require a dual-PR merge on
+          # zi007lin/zai (daniel-silvers approves). See docs/router-dispatch-contract.md#allow-list.
+          case "$TARGET_REPO" in
+            zi007lin/streettt|zi007lin/htu.io|zi007lin/nyqex|zi007lin/htu-foundation|zi007lin/zai)
+              ;;
+            *)
+              echo "::error::target_repo $TARGET_REPO not in allow-list"
+              exit 1
+              ;;
+          esac
+
+          REPO_NAME="${TARGET_REPO##*/}"
+          SLUG="${REPO_NAME^^}"
+          SLUG="${SLUG//./_}"
+          SLUG="${SLUG//-/_}"
+          MODE_VAR="ZAI_DISPATCH_MODE_${SLUG}"
+          RAW_MODE="${!MODE_VAR:-}"
+          if [ "$RAW_MODE" = "dispatch" ]; then
+            MODE="dispatch"
+          else
+            MODE="legacy"
+          fi
+
+          echo "Resolved: target_repo=$TARGET_REPO slug=$SLUG mode=$MODE (raw=${RAW_MODE:-unset})"
+          {
+            echo "target_repo=$TARGET_REPO"
+            echo "mode=$MODE"
+            echo "issue_number=$ISSUE_NUMBER"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Dispatch to target repo (dispatch mode)
+        if: steps.resolve.outputs.mode == 'dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          TARGET="${{ steps.resolve.outputs.target_repo }}"
+          ISSUE_NUMBER="${{ steps.resolve.outputs.issue_number }}"
+          SOURCE_RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          SPEC_PATH="${{ github.event.client_payload.spec_path }}"
+          SPEC_TYPE="${{ github.event.client_payload.spec_type }}"
+          NEEDS_APPROVAL="${{ github.event.client_payload.needs_approval }}"
+
+          PAYLOAD=$(jq -nc \
+            --argjson issue "$ISSUE_NUMBER" \
+            --arg target "$TARGET" \
+            --arg spec_path "$SPEC_PATH" \
+            --arg spec_type "$SPEC_TYPE" \
+            --arg needs_approval "$NEEDS_APPROVAL" \
+            --arg source_run "$SOURCE_RUN_URL" \
+            '{
+              event_type: "zilin-impl",
+              client_payload: {
+                issue_number: $issue,
+                target_repo: $target,
+                spec_path: $spec_path,
+                spec_type: $spec_type,
+                needs_approval: ($needs_approval == "true"),
+                source_zai_run_url: $source_run
+              }
+            }')
+
+          echo "Dispatching zilin-impl to $TARGET for issue #$ISSUE_NUMBER"
+          printf '%s' "$PAYLOAD" | gh api "repos/$TARGET/dispatches" --input -
+          echo "Dispatched: https://github.com/$TARGET/actions"
+
+      - name: Legacy in-place execute (legacy mode)
+        if: steps.resolve.outputs.mode == 'legacy'
+        env:
+          GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          ISSUE_NUMBER="${{ steps.resolve.outputs.issue_number }}"
+          TARGET="${{ steps.resolve.outputs.target_repo }}"
+          echo "Routing implw $ISSUE_NUMBER for $TARGET (legacy mode)"
           cd "$ROUTER_PATH"
-          claude -p "implw $ISSUE_NUMBER --repo ${{ github.repository }}"
+          claude -p "implw $ISSUE_NUMBER --repo $TARGET"
