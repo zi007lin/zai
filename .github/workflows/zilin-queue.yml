@@ -97,8 +97,16 @@ jobs:
             echo "mode=$MODE"
             echo "issue_number=$ISSUE_NUMBER"
           } >> "$GITHUB_OUTPUT"
+          {
+            echo "ISSUE_NUMBER=$ISSUE_NUMBER"
+            echo "TARGET_REPO=$TARGET_REPO"
+            echo "DISPATCH_MODE=$MODE"
+            echo "SPEC_TYPE=${{ github.event.client_payload.spec_type }}"
+            echo "SPEC_PATH=${{ github.event.client_payload.spec_path }}"
+          } >> "$GITHUB_ENV"
 
       - name: Dispatch to target repo (dispatch mode)
+        id: dispatch
         if: steps.resolve.outputs.mode == 'dispatch'
         env:
           GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
@@ -135,6 +143,7 @@ jobs:
           echo "Dispatched: https://github.com/$TARGET/actions"
 
       - name: Legacy in-place execute (legacy mode)
+        id: legacy
         if: steps.resolve.outputs.mode == 'legacy'
         env:
           GITHUB_TOKEN: ${{ secrets.ZZV_DISPATCH_TOKEN }}
@@ -145,3 +154,34 @@ jobs:
           echo "Routing implw $ISSUE_NUMBER for $TARGET (legacy mode)"
           cd "$ROUTER_PATH"
           claude -p "implw $ISSUE_NUMBER --repo $TARGET"
+
+      - name: Compute resolution
+        if: always()
+        run: |
+          if [ "${{ steps.resolve.outcome }}" != "success" ]; then
+            RESOLUTION="needs_input"
+          elif [ "${{ steps.dispatch.outcome }}" = "success" ]; then
+            RESOLUTION="dispatched"
+          elif [ "${{ steps.legacy.outcome }}" = "success" ]; then
+            RESOLUTION="self-executed"
+          else
+            RESOLUTION="failed"
+          fi
+          echo "RESOLUTION=$RESOLUTION" >> "$GITHUB_ENV"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## ZAI router summary"
+            echo ""
+            echo "| Field | Value |"
+            echo "|---|---|"
+            echo "| Issue | #${ISSUE_NUMBER:-unresolved} |"
+            echo "| Target repo | ${TARGET_REPO:-unresolved} |"
+            echo "| Spec type | ${SPEC_TYPE:-} |"
+            echo "| Dispatch mode | ${DISPATCH_MODE:-unresolved} |"
+            echo "| Spec path | ${SPEC_PATH:-} |"
+            echo "| Dispatched at | $(date -u +%FT%TZ) |"
+            echo "| Resolution | ${RESOLUTION:-needs_input} |"
+          } >> "$GITHUB_STEP_SUMMARY"
