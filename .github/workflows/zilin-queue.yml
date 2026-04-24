@@ -59,44 +59,72 @@ jobs:
             exit 1
           fi
 
-          TARGET_REPO="${{ github.event.client_payload.target_repo }}"
+          # Source A: client_payload.target_repo. Source B: alias-label header in spec body.
+          # Fetch body regardless so both sources can be compared and disagreement detected.
+          # See bug #67 (PR #69) and bug #66 (PR #68) for the joint design rationale.
+          PAYLOAD_REPO="${{ github.event.client_payload.target_repo }}"
           MATCHED_ALIAS=""
-          SPEC_BODY=""
+          BODY_REPO=""
+          SPEC_BODY=$(gh issue view "$ISSUE_NUMBER" --repo "${{ github.repository }}" --json body -q .body)
 
-          if [ -z "$TARGET_REPO" ]; then
-            echo "client_payload.target_repo not set; parsing header labels from issue body"
-            SPEC_BODY=$(gh issue view "$ISSUE_NUMBER" --repo "${{ github.repository }}" --json body -q .body)
-
-            # Accepted header labels, canonical first. Case-insensitive.
-            # See docs/PROCEDURES/spec-header-conventions.md.
-            LABEL_NAMES=(
-              "Repo"
-              "Target repo"
-              "Target"
-              "Canonical repo"
-              "For repo"
-            )
-            for LABEL in "${LABEL_NAMES[@]}"; do
-              ESC=$(printf '%s' "$LABEL" | sed 's/[][\.*^$/]/\\&/g')
-              CANDIDATE=$(printf '%s' "$SPEC_BODY" \
-                | grep -oiE "\*\*${ESC}:\*\*[[:space:]]+\`?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\`?" \
-                | head -1 \
-                | sed -E 's/^\*\*[^*]+\*\*[[:space:]]+//; s/^`//; s/`$//' \
-                || true)
-              if [ -n "$CANDIDATE" ]; then
-                TARGET_REPO="$CANDIDATE"
-                MATCHED_ALIAS="$LABEL"
-                break
-              fi
-            done
-
-            if [ -n "$MATCHED_ALIAS" ] && [ "$MATCHED_ALIAS" != "Repo" ]; then
-              echo "::warning::Resolved target_repo via alias header '**${MATCHED_ALIAS}:**'. Prefer the canonical '**Repo:**' form. See docs/PROCEDURES/spec-header-conventions.md."
+          # Accepted header labels for BODY_REPO, canonical first. Case-insensitive.
+          # See docs/PROCEDURES/spec-header-conventions.md.
+          LABEL_NAMES=(
+            "Repo"
+            "Target repo"
+            "Target"
+            "Canonical repo"
+            "For repo"
+          )
+          for LABEL in "${LABEL_NAMES[@]}"; do
+            ESC=$(printf '%s' "$LABEL" | sed 's/[][\.*^$/]/\\&/g')
+            CANDIDATE=$(printf '%s' "$SPEC_BODY" \
+              | grep -oiE "\*\*${ESC}:\*\*[[:space:]]+\`?[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\`?" \
+              | head -1 \
+              | sed -E 's/^\*\*[^*]+\*\*[[:space:]]+//; s/^`//; s/`$//' \
+              || true)
+            if [ -n "$CANDIDATE" ]; then
+              BODY_REPO="$CANDIDATE"
+              MATCHED_ALIAS="$LABEL"
+              break
             fi
+          done
+
+          if [ -n "$MATCHED_ALIAS" ] && [ "$MATCHED_ALIAS" != "Repo" ]; then
+            echo "::warning::Resolved BODY target_repo via alias header '**${MATCHED_ALIAS}:**'. Prefer the canonical '**Repo:**' form. See docs/PROCEDURES/spec-header-conventions.md."
           fi
 
-          if [ -z "$TARGET_REPO" ]; then
-            # Diagnostic block — emit BEFORE ::error:: so it is visible in the log.
+          # Reconcile payload and body sources (#69 dual-source logic).
+          if [ -n "$PAYLOAD_REPO" ] && [ -n "$BODY_REPO" ]; then
+            if [ "$PAYLOAD_REPO" = "$BODY_REPO" ]; then
+              TARGET_REPO="$PAYLOAD_REPO"
+              RESOLUTION_MODE="agreed"
+              echo "::notice title=target_repo=agreed::payload=$PAYLOAD_REPO body=$BODY_REPO"
+            else
+              RESOLUTION_MODE="disagreed-failed"
+              echo "::error title=target_repo MISMATCH::payload=$PAYLOAD_REPO body=$BODY_REPO — reconcile the spec header (alias=${MATCHED_ALIAS:-Repo}) or re-dispatch with the correct payload before retrying"
+              {
+                echo "## ❌ target_repo disagreement"
+                echo ""
+                echo "| Source | Value |"
+                echo "|---|---|"
+                echo "| \`client_payload.target_repo\` | \`$PAYLOAD_REPO\` |"
+                echo "| Issue body \`**${MATCHED_ALIAS:-Repo}:**\` header | \`$BODY_REPO\` |"
+                echo ""
+                echo "Reconcile the spec header or re-dispatch with the correct payload before retrying."
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+          elif [ -n "$PAYLOAD_REPO" ]; then
+            TARGET_REPO="$PAYLOAD_REPO"
+            RESOLUTION_MODE="payload-only"
+            echo "::notice title=target_repo=payload-only::value=$PAYLOAD_REPO (no header label in issue body)"
+          elif [ -n "$BODY_REPO" ]; then
+            TARGET_REPO="$BODY_REPO"
+            RESOLUTION_MODE="body-only"
+            echo "::notice title=target_repo=body-only::value=$BODY_REPO (client_payload.target_repo was empty; via header '**${MATCHED_ALIAS:-Repo}:**')"
+          else
+            # Diagnostic block (#68) — emit BEFORE ::error:: so it is visible in the log.
             {
               echo ""
               echo "======================================================================"
@@ -105,7 +133,7 @@ jobs:
               echo ""
               echo "Tried:"
               echo "  client_payload.target_repo       -> empty"
-              echo "  regex on issue body              -> no match"
+              echo "  alias-label regex on issue body  -> no match"
               echo ""
               echo "Expected one of these header labels in the issue body:"
               echo "  **Repo:** <owner>/<name>          (canonical)"
@@ -178,16 +206,18 @@ jobs:
             MODE="legacy"
           fi
 
-          echo "Resolved: target_repo=$TARGET_REPO slug=$SLUG mode=$MODE (raw=${RAW_MODE:-unset})"
+          echo "Resolved: target_repo=$TARGET_REPO slug=$SLUG mode=$MODE resolution=$RESOLUTION_MODE (raw=${RAW_MODE:-unset})"
           {
             echo "target_repo=$TARGET_REPO"
             echo "mode=$MODE"
             echo "issue_number=$ISSUE_NUMBER"
+            echo "resolution_mode=$RESOLUTION_MODE"
           } >> "$GITHUB_OUTPUT"
           {
             echo "ISSUE_NUMBER=$ISSUE_NUMBER"
             echo "TARGET_REPO=$TARGET_REPO"
             echo "DISPATCH_MODE=$MODE"
+            echo "RESOLUTION_MODE=$RESOLUTION_MODE"
             echo "SPEC_TYPE=${{ github.event.client_payload.spec_type }}"
             echo "SPEC_PATH=${{ github.event.client_payload.spec_path }}"
           } >> "$GITHUB_ENV"
@@ -266,6 +296,7 @@ jobs:
             echo "|---|---|"
             echo "| Issue | #${ISSUE_NUMBER:-unresolved} |"
             echo "| Target repo | ${TARGET_REPO:-unresolved} |"
+            echo "| Resolution mode | ${RESOLUTION_MODE:-needs_input} |"
             echo "| Spec type | ${SPEC_TYPE:-} |"
             echo "| Dispatch mode | ${DISPATCH_MODE:-unresolved} |"
             echo "| Spec path | ${SPEC_PATH:-} |"
