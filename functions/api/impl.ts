@@ -4,8 +4,13 @@ interface Env {
 
 interface ImplRequest {
   issue_number: number;
-  repo?: string;
+  target_repo: string;
 }
+
+// The router's repo hosts zilin-queue.yml and is always the first hop for
+// zilin_impl dispatches. The router then routes to the final destination
+// carried in client_payload.target_repo.
+const ROUTER_REPO = 'zi007lin/zai';
 
 const ALLOWED_ORIGINS = new Set([
   'https://zai.htu.io',
@@ -54,11 +59,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   if (!body.issue_number) {
     return new Response('issue_number required', { status: 400, headers: cors });
   }
-
-  const repo = body.repo ?? 'zi007lin/zai';
+  if (!body.target_repo) {
+    return new Response('target_repo required', { status: 400, headers: cors });
+  }
 
   const response = await fetch(
-    `https://api.github.com/repos/${repo}/dispatches`,
+    `https://api.github.com/repos/${ROUTER_REPO}/dispatches`,
     {
       method: 'POST',
       headers: {
@@ -72,7 +78,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         event_type: 'zilin_impl',
         client_payload: {
           issue_number: body.issue_number,
-          repo,
+          target_repo: body.target_repo,
         },
       }),
     }
@@ -84,7 +90,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   return new Response(
-    JSON.stringify({ ok: true, issue_number: body.issue_number, repo }),
+    JSON.stringify({ ok: true, issue_number: body.issue_number, target_repo: body.target_repo }),
     { status: 202, headers: { ...cors, 'Content-Type': 'application/json' } }
   );
 };
