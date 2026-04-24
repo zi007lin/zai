@@ -12,11 +12,17 @@ jobs:
       # Per-repo dispatch-mode flags. Unset -> legacy (existing in-place behavior).
       # Source of truth: repository variables on zi007lin/zai.
       # See docs/router-dispatch-contract.md#mode-resolution.
-      ZAI_DISPATCH_MODE_STREETTT: ${{ vars.ZAI_DISPATCH_MODE_STREETTT }}
+      # Slug derivation: TARGET_REPO basename, uppercased, dots and hyphens -> underscores.
+      # streettt.com -> STREETTT_COM ; nyqex.io -> NYQEX_IO ; sixpass.app -> SIXPASS_APP.
+      ZAI_DISPATCH_MODE_STREETTT_COM: ${{ vars.ZAI_DISPATCH_MODE_STREETTT_COM }}
       ZAI_DISPATCH_MODE_HTU_IO: ${{ vars.ZAI_DISPATCH_MODE_HTU_IO }}
       ZAI_DISPATCH_MODE_HTU_FOUNDATION: ${{ vars.ZAI_DISPATCH_MODE_HTU_FOUNDATION }}
-      ZAI_DISPATCH_MODE_NYQEX: ${{ vars.ZAI_DISPATCH_MODE_NYQEX }}
+      ZAI_DISPATCH_MODE_NYQEX_IO: ${{ vars.ZAI_DISPATCH_MODE_NYQEX_IO }}
       ZAI_DISPATCH_MODE_ZAI: ${{ vars.ZAI_DISPATCH_MODE_ZAI }}
+      ZAI_DISPATCH_MODE_SIXPASS_APP: ${{ vars.ZAI_DISPATCH_MODE_SIXPASS_APP }}
+      ZAI_DISPATCH_MODE_THEICTE_COM: ${{ vars.ZAI_DISPATCH_MODE_THEICTE_COM }}
+      ZAI_DISPATCH_MODE_MEDICSHARE_COM: ${{ vars.ZAI_DISPATCH_MODE_MEDICSHARE_COM }}
+      ZAI_DISPATCH_MODE_SHOPLEMENT_COM: ${{ vars.ZAI_DISPATCH_MODE_SHOPLEMENT_COM }}
     steps:
       - name: Ensure Claude Code CLI on PATH
         run: |
@@ -70,8 +76,28 @@ jobs:
 
           # Allow-list. Edits to this case statement require a dual-PR merge on
           # zi007lin/zai (daniel-silvers approves). See docs/router-dispatch-contract.md#allow-list.
+          # Repo names follow htu-foundation CLAUDE.md Hard Rule: registered domains use full
+          # domain (with TLD); non-domain repos use bare slug. See htu-foundation#33.
           case "$TARGET_REPO" in
-            zi007lin/streettt|zi007lin/htu.io|zi007lin/nyqex|zi007lin/htu-foundation|zi007lin/zai)
+            zi007lin/streettt.com | \
+            zi007lin/streettt-private | \
+            zi007lin/htu.io | \
+            zi007lin/nyqex.io | \
+            zi007lin/zzv.io | \
+            zi007lin/theicte.com | \
+            zi007lin/sixpass.app | \
+            zi007lin/medicshare.com | \
+            zi007lin/shoplement.com | \
+            zi007lin/htu-foundation | \
+            zi007lin/htu-governance | \
+            zi007lin/zai | \
+            zi007lin/htu-legal | \
+            zi007lin/httc-framework | \
+            zi007lin/zzvchain | \
+            zi007lin/zzv-engine-net8 | \
+            zi007lin/zzv-engine-py | \
+            zi007lin/zzv-mid-layer | \
+            zi007lin/zzv-win-sentinel)
               ;;
             *)
               echo "::error::target_repo $TARGET_REPO not in allow-list"
