@@ -39,7 +39,7 @@ verification (Option A) once `SCORE_SIGNING_KEY` is live on the runner. See
 
 Before impl runs, every spec is classified:
 
-- **Trivial** (`chore` 2/2, `hotfix` 3/3, no gates listed in the score block):
+- **Trivial** (`chore` 5/5, `hotfix` 3/3, no gates listed in the score block):
   AUTO — proceeds immediately
 - **Non-trivial** (`feat`, `bug`, `research`, or any spec with one or more items
   in `gates[]`, or any spec referencing a force-push / history rewrite /
