@@ -425,6 +425,7 @@ OpenAPI at `zai.htu.io/openapi.json`.
 | 1.2 | 2026-04-19 | Added `legal_trigger_declaration` check to every building-type rubric (RESEARCH exempt; reports are non-building). Added `contract_law_signals` bundle (structural only, mandatory disclaimer banner, jurisdiction-agnostic, explicitly not legal advice). Added future `legal_services` bundle slot for 2027+ partner firm use. Rubric counts: FEAT 8→9, BUG 6→7, SPEC 5→6, CHORE 4→5, REFACTOR introduced as first-class type at 9 checks (was previously silently folded into CHORE in implementation — see BUG 2026-04-19), RESEARCH unchanged at 6 (non-building), UX/BRAND 5→6. |
 | 1.3 | 2026-04-20 | Enterprise disclosure footer rendered on `.scored.md` output for specs carrying any trigger bundle (`healthcare`, `fintech`, `financial_advisory`, `legal_services`, `government`). Canonical text sourced from `docs/brand/enterprise-disclosure.md`; drift-detection test asserts verbatim equality. Rendering lives in the output layer (`src/lib/renderScoredSpec.ts`), not the scoring engine — `ScoreResult` shape unchanged. No rubric count changes. Part of the ZiLin Brand Migration REFACTOR Phase 1 (2026-04-19). |
 | 1.3.1 | 2026-04-20 | Per-type Intent word caps (was uniform 150 with CHORE exception at 100). SPEC 250, REFACTOR 250, RESEARCH 200 — these types must frame actors/scope/deferrals, carry trigger + reversibility caveat, or set up context for research questions. FEAT/BUG/UX/BRAND unchanged at 150; CHORE unchanged at 100. `INTENT_CAPS` lookup in `scoreSpec.ts` replaces the previous flat constant. Drift-detection test extended with an Intent-cap column in the Appendix table. Error message on cap violation now names the cap, spec type, and suggests relocation or decomposition. Additive liberalization — no previously passing spec regresses. Also tightens the BUG/HOTFIX Intent check, which was previously loose (no cap enforced); per docs the cap has always been 150, so this aligns code to doc. Closes #51. |
+| 1.4.0 | 2026-05-01 | Mandatory `## Work Estimate` section added to **all 9** building rubrics (FEAT, BUG, HOTFIX, SPEC, CHORE, REFACTOR, RESEARCH, UX, BRAND). Detector validates: H2 present, `### Active operator time` table with Phase + Estimate columns and Total row, `### Wall-clock time` table with Wait dependency + Estimate columns and Total row, `### Assumptions` subsection with ≥1 bullet, `### Actuals (filled post-execution)` table with Phase, Estimate, Actual, Delta column headers. Rubric check counts: FEAT 9→10, BUG 7→8, HOTFIX 7→8, SPEC 6→7, CHORE 5→6, REFACTOR 9→10, RESEARCH 6→7, UX 6→7, BRAND 6→7. Backward compat: pre-v1.4.0 scored specs grandfathered (their stored scores stand); specs scored at v1.4.0 or later require the section. The parent SPEC PR (zzv.io #35) lists 7 spec types; the implementation covers 9 because the codebase has HOTFIX and RESEARCH rubrics in addition to the 7 documented. The SPEC also stated REFACTOR's pre-change count as 7, but the actual rubric had 9 — informational mismatch documented in the implementation PR. |
 ```
 
 ---
@@ -435,14 +436,14 @@ The Layer 3 drift-detection test asserts that rubric arrays in `scoreSpec.ts` ma
 
 | Type | Count | Intent cap | Ordered section IDs (canonical) |
 |---|---|---|---|
-| `feat` | 9 | 150 | `intent, decision_tree, final_spec, acceptance_criteria, game_theory, migration_summary, files_list, models_applied, legal_triggers` |
-| `bug` | 7 | 150 | `intent, repro, fix, acceptance_criteria, migration_summary, files, legal_triggers` |
-| `spec` | 6 | 250 | `intent, decision_tree, rules_or_content, migration_summary, files_schema, legal_triggers` |
-| `chore` | 5 | 100 | `intent, action, acceptance_criteria, files, legal_triggers` |
-| `refactor` | 9 | 250 | `intent, decision_tree, final_spec, acceptance_criteria, migration_summary, files_list, models_applied, migration_plan, legal_triggers` |
-| `research` | 6 | 200 | `intent, research_questions, acceptance_criteria, report_format, migration_summary, files` |
-| `ux` | 6 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
-| `brand` | 6 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers` |
+| `feat` | 10 | 150 | `intent, decision_tree, final_spec, acceptance_criteria, game_theory, migration_summary, files_list, models_applied, legal_triggers, work_estimate` |
+| `bug` | 8 | 150 | `intent, repro, fix, acceptance_criteria, migration_summary, files, legal_triggers, work_estimate` |
+| `spec` | 7 | 250 | `intent, decision_tree, rules_or_content, migration_summary, files_schema, legal_triggers, work_estimate` |
+| `chore` | 6 | 100 | `intent, action, acceptance_criteria, files, legal_triggers, work_estimate` |
+| `refactor` | 10 | 250 | `intent, decision_tree, final_spec, acceptance_criteria, migration_summary, files_list, models_applied, migration_plan, legal_triggers, work_estimate` |
+| `research` | 7 | 200 | `intent, research_questions, acceptance_criteria, report_format, migration_summary, files, work_estimate` |
+| `ux` | 7 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers, work_estimate` |
+| `brand` | 7 | 150 | `intent, jobs_to_be_done, design_rationale, acceptance_criteria, assets_files, legal_triggers, work_estimate` |
 
 Drift test implementation notes:
 - Parse each `### X rubric (N checks)` heading in this doc
@@ -453,4 +454,4 @@ Drift test implementation notes:
 
 ---
 
-*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.3.1*
+*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.4.0*
