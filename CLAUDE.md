@@ -91,3 +91,23 @@ and the committer must run `git filter-repo` to scrub history (coordinate
 with the admin — force-push required).
 
 Public repos contain governance rules and stubs only. No exceptions.
+
+## Claude Code permissions
+
+This repo uses the layered permissions convention established in
+`htu-foundation/docs/dev-environment/claude-code-permissions.md`:
+
+- **Global** (`~/.claude/settings.json`): cross-repo safe ops + global
+  denies (`rm -rf`, `git push --force*`, `sudo`, `npm publish`,
+  `.env` reads).
+- **Committed** (`.claude/settings.json` here): zai-specific allowlist
+  for build/deploy commands (`npm run dev`/`deploy:*`,
+  `npx wrangler pages|d1|r2|kv`, `impl i`, `implw`).
+- **Personal** (`.claude/settings.local.json`, gitignored): per-developer
+  experimentation; new patterns accepted via in-session "don't ask
+  again" prompts land here.
+
+To add a new pattern permanently for zai, append to the committed file
+and PR. To experiment locally, append to the local file (or accept the
+prompt). See the canonical reference doc for the full taxonomy and the
+`streettt-private` deny-heavy variant.
