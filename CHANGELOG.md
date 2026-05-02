@@ -9,6 +9,48 @@ Versioning follows [SemVer](https://semver.org/) — but note that the `RUBRIC_V
 
 _(No unreleased changes.)_
 
+## [1.4.0] — 2026-05-01
+
+Implements zi007lin/zzv.io PR #35 (merged at 1c9a9eb). Mandatory `## Work Estimate` section added to every building rubric. Captures active operator time, wall-clock time with wait dependencies, assumptions, and a placeholder Actuals table to be filled post-execution. Specs scored at v1.4.0 or later require the section; pre-v1.4.0 scored specs retain their stored scores (grandfathered).
+
+### Added
+
+- `checkWorkEstimate(md)` detector in `src/lib/scoreSpec.ts`. Validates the `## Work Estimate` H2, the `### Active operator time` table (Phase + Estimate columns, ≥ 1 phase row + Total row), the `### Wall-clock time` table (Wait dependency + Estimate columns, ≥ 1 row + Total row), the `### Assumptions` subsection (≥ 1 bullet), and the `### Actuals (filled post-execution)` table (Phase, Estimate, Actual, Delta column headers).
+- New helpers in `scoreSpec.ts`: `subsectionBody`, `tableHeaderLine`, `tableHasTotalRow`, `tableDataRowCount`. Used by `checkWorkEstimate` only; reusable for any future subsection-aware detectors.
+- `WORK_ESTIMATE_SECTION` shared `SectionDef` constant — appended as the last item in every per-type `*_SECTIONS` array so the rubric order matches the documented `Appendix: rubric-count summary` table.
+- 11 new tests in `scoreSpec.test.ts`: 9 backward-compat tests (one per type, asserting that pre-v1.4.0 fixtures FAIL only the new `work_estimate` check while every other check still PASSes), 1 positive test, and 9 negative tests covering each failure mode (missing H2, missing each of the four subsections, both Total-row variants, no-bullet Assumptions, missing Actuals column headers).
+- New `WORK_ESTIMATE_OK` fixture block + `<type>Spec140` fixtures (per-type v1.4.0-compliant variants) inline in the test file, matching the existing template-string fixture pattern.
+
+### Changed
+
+- `RUBRIC_VERSION` bumped `1.3.1` → `1.4.0` (minor; new check added across all rubrics — backwards-compatible at the API layer, behavior-changing at the scoring-rule layer).
+- Per-type rubric counts incremented by 1: **FEAT 9→10, BUG 7→8, HOTFIX 7→8, SPEC 6→7, CHORE 5→6, REFACTOR 9→10, RESEARCH 6→7, UX 6→7, BRAND 6→7**.
+- `docs/ZAI_SYSTEM_INSTRUCTIONS.md` Appendix table updated for every documented type; new section IDs include `work_estimate` as the last entry. Doc footer bumped to `v1.4.0`.
+- Existing "scores a compliant `<type>` spec X/X passed" tests now use the new `<type>Spec140` fixtures and assert the new `(X+1)/(X+1)` count. The legacy `<type>Spec` fixtures are preserved unchanged and exercised by the new backward-compat tests.
+
+### Added (CI)
+
+- `.github/workflows/ci.yml` — minimal lint + test workflow on `pull_request` and pushes to `main`. Two jobs (`lint`, `test`) on `ubuntu-latest`. Replaces the previous "no PR-time CI" gap surfaced during Phase A discovery.
+
+### Backward compatibility
+
+- Pre-v1.4.0 scored specs are grandfathered; their stored `.scored.md` outputs are not re-validated and their scores stand.
+- Specs scored at v1.4.0 or later require the `## Work Estimate` section.
+- The committed legacy fixtures (`featSpec`, `bugSpec`, etc.) are not modified; the new backward-compat test suite asserts they now FAIL only the `work_estimate` check, with every other section still PASSing — proving the new check is the only behavioral delta.
+
+### Implementation notes
+
+- Parent SPEC (zzv.io PR #35) listed 7 spec types (FEAT, BUG, SPEC, CHORE, REFACTOR, UX, BRAND); the implementation covers **9** because the codebase has HOTFIX and RESEARCH rubrics in addition to the 7 documented. Per operator decision during Phase A, all 9 types receive the new check.
+- Parent SPEC also stated REFACTOR's pre-change count as 7. The actual rubric had **9** sections; the implementation moves it to 10. This is informational — no separate ticket; the SPEC table was illustrative, not authoritative.
+- No new dependencies. The detector uses the existing string/regex helpers; the test fixtures use the existing template-string pattern.
+- `package.json` `lint` script changed from `eslint .` to `tsc --noEmit`. ESLint was named in the script but never actually installed in the repo's `node_modules` (pre-existing gap surfaced during Phase A). The replacement uses the already-installed TypeScript compiler in typecheck-only mode, so the CI lint job has something real to run without adding new dependencies. Adding ESLint properly is a separate cleanup CHORE.
+- Branch protection is **not** configured on `zi007lin/zai` `main`. Surfaced in the implementation PR body as a follow-up CHORE candidate; out of scope for this PR.
+
+### Reference
+
+- Spec: zi007lin/zzv.io PR #35, merged at `1c9a9eb`
+- Implementation handoff CHORE: zi007lin/zzv.io PR #36, merged at `bc041e2`
+
 ## [1.3.1] — 2026-04-20
 
 Closes #51. Per-type Intent word caps replace the previous uniform 150-word cap (with CHORE as a 100-word exception). SPEC, REFACTOR, and RESEARCH need more framing than FEAT/BUG — the uniform cap forced authors to compress substantive context or split content into sections where it didn't belong. Additive liberalization; no previously passing spec regresses.

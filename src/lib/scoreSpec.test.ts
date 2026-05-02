@@ -292,6 +292,53 @@ None.
 
 const brandSpec = uxSpec;
 
+// ─── Work Estimate fixture block (v1.4.0) ─────────────────────────────────
+//
+// Canonical Work Estimate section that satisfies the v1.4.0 detector.
+// Append it to a v1.2 fixture to produce a v1.4.0-compliant fixture.
+
+const WORK_ESTIMATE_OK = `
+## Work Estimate
+
+### Active operator time
+
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | discovery |
+| Phase B | 30 min | implementation |
+| **Total active** | **35 min** | |
+
+### Wall-clock time
+
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 30 min - 12 hr | reviewer pace |
+| **Total wall-clock** | **30 min - 12 hr** | |
+
+### Assumptions
+
+- repo accessible
+- reviewer available
+
+### Actuals (filled post-execution)
+
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| Phase B | 30 min | TBD | TBD | |
+| **Total** | **35 min** | **TBD** | **TBD** | |
+`;
+
+const featSpec140 = featSpec + WORK_ESTIMATE_OK;
+const researchSpec140 = researchSpec + WORK_ESTIMATE_OK;
+const bugSpec140 = bugSpec + WORK_ESTIMATE_OK;
+const hotfixSpec140 = hotfixSpec + WORK_ESTIMATE_OK;
+const choreSpec140 = choreSpec + WORK_ESTIMATE_OK;
+const specSpec140 = specSpec + WORK_ESTIMATE_OK;
+const refactorSpec140 = refactorSpec + WORK_ESTIMATE_OK;
+const uxSpec140 = uxSpec + WORK_ESTIMATE_OK;
+const brandSpec140 = brandSpec + WORK_ESTIMATE_OK;
+
 // ─── detectSpecType ───────────────────────────────────────────────────────
 
 describe("detectSpecType", () => {
@@ -335,11 +382,11 @@ describe("detectSpecType", () => {
 // ─── scoreSpec — feat (9 checks) ──────────────────────────────────────────
 
 describe("scoreSpec — feat", () => {
-  it("scores a compliant feat spec 9/9 passed", () => {
-    const r = scoreSpec(featSpec, "2026-04-12__feat__example.md");
+  it("scores a compliant feat spec 10/10 passed (v1.4.0)", () => {
+    const r = scoreSpec(featSpec140, "2026-04-12__feat__example.md");
     expect(r.spec_type).toBe("feat");
-    expect(r.required_count).toBe(9);
-    expect(r.score).toBe("9/9");
+    expect(r.required_count).toBe(10);
+    expect(r.score).toBe("10/10");
     expect(r.passed).toBe(true);
     for (const key of r.section_order) {
       if (r.sections[key] !== "FAIL") {
@@ -418,11 +465,11 @@ describe("scoreSpec — feat", () => {
 // ─── scoreSpec — research (6 checks, v1.2 unchanged) ──────────────────────
 
 describe("scoreSpec — research", () => {
-  it("scores a compliant research spec 6/6 passed", () => {
-    const r = scoreSpec(researchSpec, "2026-04-13__research__example.md");
+  it("scores a compliant research spec 7/7 passed (v1.4.0)", () => {
+    const r = scoreSpec(researchSpec140, "2026-04-13__research__example.md");
     expect(r.spec_type).toBe("research");
-    expect(r.required_count).toBe(6);
-    expect(r.score).toBe("6/6");
+    expect(r.required_count).toBe(7);
+    expect(r.score).toBe("7/7");
     expect(r.passed).toBe(true);
   });
 
@@ -456,11 +503,11 @@ describe("scoreSpec — research", () => {
 // ─── scoreSpec — bug (7 checks, v1.2) ─────────────────────────────────────
 
 describe("scoreSpec — bug", () => {
-  it("scores a compliant bug spec 7/7 passed", () => {
-    const r = scoreSpec(bugSpec, "2026-04-13__bug__example.md");
+  it("scores a compliant bug spec 8/8 passed (v1.4.0)", () => {
+    const r = scoreSpec(bugSpec140, "2026-04-13__bug__example.md");
     expect(r.spec_type).toBe("bug");
-    expect(r.required_count).toBe(7);
-    expect(r.score).toBe("7/7");
+    expect(r.required_count).toBe(8);
+    expect(r.score).toBe("8/8");
     expect(r.passed).toBe(true);
   });
 
@@ -487,16 +534,16 @@ describe("scoreSpec — bug", () => {
 // ─── scoreSpec — hotfix (7 checks — aliased to bug) ───────────────────────
 
 describe("scoreSpec — hotfix", () => {
-  it("scores a compliant hotfix spec 7/7 passed", () => {
-    const r = scoreSpec(hotfixSpec, "2026-04-13__hotfix__example.md");
+  it("scores a compliant hotfix spec 8/8 passed (v1.4.0)", () => {
+    const r = scoreSpec(hotfixSpec140, "2026-04-13__hotfix__example.md");
     expect(r.spec_type).toBe("hotfix");
-    expect(r.required_count).toBe(7);
-    expect(r.score).toBe("7/7");
+    expect(r.required_count).toBe(8);
+    expect(r.score).toBe("8/8");
     expect(r.passed).toBe(true);
   });
 
-  it("hotfix uses same section set as bug", () => {
-    const r = scoreSpec(hotfixSpec, "2026-04-13__hotfix__example.md");
+  it("hotfix uses same section set as bug (v1.4.0)", () => {
+    const r = scoreSpec(hotfixSpec140, "2026-04-13__hotfix__example.md");
     expect(r.section_order).toEqual([
       "intent",
       "repro",
@@ -505,6 +552,7 @@ describe("scoreSpec — hotfix", () => {
       "migration_summary",
       "files",
       "legal_triggers",
+      "work_estimate",
     ]);
   });
 });
@@ -512,11 +560,11 @@ describe("scoreSpec — hotfix", () => {
 // ─── scoreSpec — chore (5 checks, v1.2) ───────────────────────────────────
 
 describe("scoreSpec — chore", () => {
-  it("scores a compliant chore spec 5/5 passed", () => {
-    const r = scoreSpec(choreSpec, "2026-04-13__chore__example.md");
+  it("scores a compliant chore spec 6/6 passed (v1.4.0)", () => {
+    const r = scoreSpec(choreSpec140, "2026-04-13__chore__example.md");
     expect(r.spec_type).toBe("chore");
-    expect(r.required_count).toBe(5);
-    expect(r.score).toBe("5/5");
+    expect(r.required_count).toBe(6);
+    expect(r.score).toBe("6/6");
     expect(r.passed).toBe(true);
   });
 
@@ -542,11 +590,11 @@ describe("scoreSpec — chore", () => {
 // ─── scoreSpec — spec (6 checks, v1.2) ────────────────────────────────────
 
 describe("scoreSpec — spec", () => {
-  it("scores a compliant spec 6/6 passed", () => {
-    const r = scoreSpec(specSpec, "2026-04-13__spec__example.md");
+  it("scores a compliant spec 7/7 passed (v1.4.0)", () => {
+    const r = scoreSpec(specSpec140, "2026-04-13__spec__example.md");
     expect(r.spec_type).toBe("spec");
-    expect(r.required_count).toBe(6);
-    expect(r.score).toBe("6/6");
+    expect(r.required_count).toBe(7);
+    expect(r.score).toBe("7/7");
     expect(r.passed).toBe(true);
   });
 
@@ -566,18 +614,18 @@ describe("scoreSpec — spec", () => {
 // ─── scoreSpec — refactor (9 checks, v1.2) ────────────────────────────────
 
 describe("scoreSpec — refactor", () => {
-  it("scores a compliant refactor spec 9/9 passed", () => {
-    const r = scoreSpec(refactorSpec, "2026-04-13__refactor__example.md");
+  it("scores a compliant refactor spec 10/10 passed (v1.4.0)", () => {
+    const r = scoreSpec(refactorSpec140, "2026-04-13__refactor__example.md");
     expect(r.spec_type).toBe("refactor");
-    expect(r.required_count).toBe(9);
-    expect(r.score).toBe("9/9");
+    expect(r.required_count).toBe(10);
+    expect(r.score).toBe("10/10");
     expect(r.passed).toBe(true);
   });
 
-  it("refactor is NOT downgraded to chore (the bug this PR fixes)", () => {
-    const r = scoreSpec(refactorSpec, "2026-04-13__refactor__example.md");
+  it("refactor is NOT downgraded to chore (Apr 2026 bug fix); v1.4.0 has 10 checks", () => {
+    const r = scoreSpec(refactorSpec140, "2026-04-13__refactor__example.md");
     expect(r.spec_type).toBe("refactor");
-    expect(r.required_count).toBe(9);
+    expect(r.required_count).toBe(10);
   });
 
   it("migration_plan FAILs without ### Rollback subsection", () => {
@@ -602,11 +650,11 @@ describe("scoreSpec — refactor", () => {
 // ─── scoreSpec — ux / brand (6 checks each, v1.2) ─────────────────────────
 
 describe("scoreSpec — ux", () => {
-  it("scores a compliant ux spec 6/6 passed", () => {
-    const r = scoreSpec(uxSpec, "2026-04-13__ux__example.md");
+  it("scores a compliant ux spec 7/7 passed (v1.4.0)", () => {
+    const r = scoreSpec(uxSpec140, "2026-04-13__ux__example.md");
     expect(r.spec_type).toBe("ux");
-    expect(r.required_count).toBe(6);
-    expect(r.score).toBe("6/6");
+    expect(r.required_count).toBe(7);
+    expect(r.score).toBe("7/7");
     expect(r.passed).toBe(true);
   });
 
@@ -639,11 +687,11 @@ describe("scoreSpec — ux", () => {
 });
 
 describe("scoreSpec — brand", () => {
-  it("scores a compliant brand spec 6/6 passed (same rubric as ux)", () => {
-    const r = scoreSpec(brandSpec, "2026-04-13__brand__example.md");
+  it("scores a compliant brand spec 7/7 passed (v1.4.0; same rubric as ux)", () => {
+    const r = scoreSpec(brandSpec140, "2026-04-13__brand__example.md");
     expect(r.spec_type).toBe("brand");
-    expect(r.required_count).toBe(6);
-    expect(r.score).toBe("6/6");
+    expect(r.required_count).toBe(7);
+    expect(r.score).toBe("7/7");
     expect(r.passed).toBe(true);
   });
 });
@@ -652,7 +700,7 @@ describe("scoreSpec — brand", () => {
 
 describe("scoreSpec — section_reasons", () => {
   it("all passing sections return null reasons", () => {
-    const r = scoreSpec(featSpec, "2026-04-12__feat__example.md");
+    const r = scoreSpec(featSpec140, "2026-04-12__feat__example.md");
     for (const key of r.section_order) {
       expect(r.section_reasons[key]).toBeNull();
     }
@@ -696,8 +744,8 @@ describe("scoreSpec — gates and meta", () => {
     expect(r.gates[0]).toMatch(/chain/i);
   });
 
-  it("rubric version is 1.3.1", () => {
-    expect(scoreSpec(featSpec, "2026-04-13__feat__x.md").rubric_version).toBe("1.3.1");
+  it("rubric version is 1.4.0", () => {
+    expect(scoreSpec(featSpec140, "2026-04-13__feat__x.md").rubric_version).toBe("1.4.0");
   });
 
   it("non-matching filename throws SpecTypeError (previously silently fell back to feat)", () => {
@@ -784,9 +832,9 @@ describe("drift-detection — scoreSpec vs ZAI_SYSTEM_INSTRUCTIONS.md §Appendix
     }
   });
 
-  it("REFACTOR specifically has a registered rubric with 9 checks", () => {
+  it("REFACTOR specifically has a registered rubric with 10 checks (v1.4.0)", () => {
     expect(RUBRIC_SECTION_KEYS.refactor).toBeDefined();
-    expect(RUBRIC_SECTION_KEYS.refactor.length).toBe(9);
+    expect(RUBRIC_SECTION_KEYS.refactor.length).toBe(10);
   });
 
   it("hotfix is not in the appendix (aliased to bug at runtime)", () => {
@@ -858,7 +906,7 @@ docs/widget-rules.md
 
 ## Legal triggers
 None.
-`;
+${WORK_ESTIMATE_OK}`;
 
 const refactorBase = (intentBody: string) => `# refactor title
 
@@ -904,7 +952,7 @@ Trigger: TM opposition. Reverse DNS, revert docs.
 
 ## Legal triggers
 None.
-`;
+${WORK_ESTIMATE_OK}`;
 
 const researchBase = (intentBody: string) => `# research title
 
@@ -933,7 +981,7 @@ The report structure is documented here.
 \`\`\`
 issues/reports/example.md
 \`\`\`
-`;
+${WORK_ESTIMATE_OK}`;
 
 describe("scoreSpec — per-type Intent caps", () => {
   it("spec-intent-240-pass: SPEC at 240 words passes under 250-word cap", () => {
@@ -1005,5 +1053,280 @@ describe("scoreSpec — per-type Intent caps", () => {
       "2026-04-13__chore__x.md",
     );
     expect(r.sections.intent).toBe("PASS");
+  });
+});
+
+// ─── v1.4.0 Work Estimate ─────────────────────────────────────────────────
+//
+// 1 backward-compat test per type + 1 positive + 9 negative failure-mode
+// tests covering every branch in checkWorkEstimate.
+
+describe("v1.4.0 — backward compatibility (pre-v1.4.0 fixtures lack Work Estimate)", () => {
+  const cases: { type: SpecType; spec: string; filename: string; preCount: number }[] = [
+    { type: "feat", spec: featSpec, filename: "2026-04-12__feat__legacy.md", preCount: 9 },
+    { type: "bug", spec: bugSpec, filename: "2026-04-12__bug__legacy.md", preCount: 7 },
+    { type: "hotfix", spec: hotfixSpec, filename: "2026-04-12__hotfix__legacy.md", preCount: 7 },
+    { type: "spec", spec: specSpec, filename: "2026-04-12__spec__legacy.md", preCount: 6 },
+    { type: "chore", spec: choreSpec, filename: "2026-04-12__chore__legacy.md", preCount: 5 },
+    { type: "refactor", spec: refactorSpec, filename: "2026-04-12__refactor__legacy.md", preCount: 9 },
+    { type: "research", spec: researchSpec, filename: "2026-04-12__research__legacy.md", preCount: 6 },
+    { type: "ux", spec: uxSpec, filename: "2026-04-12__ux__legacy.md", preCount: 6 },
+    { type: "brand", spec: brandSpec, filename: "2026-04-12__brand__legacy.md", preCount: 6 },
+  ];
+  for (const { type, spec, filename, preCount } of cases) {
+    it(`${type}: pre-v1.4.0 fixture (no Work Estimate) fails ONLY work_estimate; other sections still pass`, () => {
+      const r = scoreSpec(spec, filename);
+      expect(r.required_count).toBe(preCount + 1);
+      expect(r.sections.work_estimate).toBe("FAIL");
+      expect(r.section_reasons.work_estimate).toMatch(/Work Estimate/i);
+      expect(r.passed).toBe(false);
+      // Every other check still PASSes (proves the new check is the only
+      // failing one — the rest of the rubric is unchanged).
+      for (const key of r.section_order) {
+        if (key !== "work_estimate") {
+          expect(r.sections[key]).toBe("PASS");
+        }
+      }
+    });
+  }
+});
+
+describe("v1.4.0 — Work Estimate positive case", () => {
+  it("a fully-compliant Work Estimate section passes the work_estimate check", () => {
+    const r = scoreSpec(featSpec140, "2026-05-01__feat__we-positive.md");
+    expect(r.sections.work_estimate).toBe("PASS");
+    expect(r.section_reasons.work_estimate).toBeNull();
+  });
+});
+
+describe("v1.4.0 — Work Estimate failure modes", () => {
+  // Reusable mutator helper: replace the entire Work Estimate block.
+  function withMutatedWorkEstimate(replacement: string): string {
+    return featSpec + replacement;
+  }
+
+  it("missing ## Work Estimate H2", () => {
+    const r = scoreSpec(featSpec, "2026-05-01__feat__we-1.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/"## Work Estimate" heading not found/);
+  });
+
+  it("missing ### Active operator time subsection", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Assumptions
+- repo accessible
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-2.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Active operator time/);
+  });
+
+  it("missing ### Wall-clock time subsection", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Assumptions
+- repo accessible
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-3.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Wall-clock time/);
+  });
+
+  it("missing ### Assumptions subsection", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-4.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Assumptions/);
+  });
+
+  it("missing ### Actuals (filled post-execution) subsection", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Assumptions
+- repo accessible
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-5.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Actuals/);
+  });
+
+  it("Active operator time table without Total row", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Assumptions
+- ok
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-6.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Active operator time.*Total row/);
+  });
+
+  it("Wall-clock time table without Total row", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+
+### Assumptions
+- ok
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-7.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Wall-clock time.*Total row/);
+  });
+
+  it("Assumptions section with no bullets", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Assumptions
+just a paragraph with no bullets at all.
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Actual | Delta | Note |
+|---|---|---|---|---|
+| Phase A | 5 min | TBD | TBD | |
+| **Total** | **5 min** | **TBD** | **TBD** | |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-8.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Assumptions.*no bullets/);
+  });
+
+  it("Actuals table missing required column headers", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+| **Total active** | **5 min** | |
+
+### Wall-clock time
+| Wait dependency | Estimate | Notes |
+|---|---|---|
+| Review | 1 hr | |
+| **Total wall-clock** | **1 hr** | |
+
+### Assumptions
+- ok
+
+### Actuals (filled post-execution)
+| Phase | Estimate | Note |
+|---|---|---|
+| Phase A | 5 min | TBD |
+| **Total** | **5 min** | **TBD** |
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-9.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    expect(r.section_reasons.work_estimate).toMatch(/Actuals.*missing required column headers/);
+    expect(r.section_reasons.work_estimate).toMatch(/Actual/);
+    expect(r.section_reasons.work_estimate).toMatch(/Delta/);
   });
 });

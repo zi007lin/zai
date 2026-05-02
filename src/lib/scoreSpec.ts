@@ -34,7 +34,7 @@ export class SpecTypeError extends Error {
   }
 }
 
-const RUBRIC_VERSION = "1.3.1";
+const RUBRIC_VERSION = "1.4.0";
 
 // Per-type Intent word caps. FEAT/BUG/UX/BRAND stay at 150 where compression
 // is a virtue; CHORE stays at 100; SPEC and REFACTOR rise to 250 because they
@@ -94,6 +94,56 @@ function bulletListCount(body: string): number {
   return (body.match(/^[-*]\s+/gm) || []).length;
 }
 
+// ─── Work Estimate helpers (v1.4.0) ───────────────────────────────────────
+
+// Body of a `### subheading` inside a `## section` body. Cuts off at the
+// next `## ` (sibling section) or `### ` (sibling subsection), whichever
+// comes first.
+function subsectionBody(parentBody: string, headingPattern: RegExp): string {
+  const start = parentBody.search(headingPattern);
+  if (start === -1) return "";
+  const after = parentBody.slice(start).replace(headingPattern, "");
+  const next = after.search(/^###?\s+/m);
+  return next === -1 ? after : after.slice(0, next);
+}
+
+// First markdown-table header line in a body (the row before `|---|---|`).
+function tableHeaderLine(body: string): string | null {
+  const lines = body.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const next = lines[i + 1] ?? "";
+    if (/\|.*\|/.test(lines[i]) && /^\s*\|[\s\-:|]+\|\s*$/.test(next)) {
+      return lines[i];
+    }
+  }
+  return null;
+}
+
+// True when the body contains a row whose first cell starts with `Total`
+// (with or without bold markers). Used to detect "Total" rows in the
+// Active-operator-time and Wall-clock tables.
+function tableHasTotalRow(body: string): boolean {
+  return /\|\s*\*{0,2}\s*Total\b[^|]*\|/i.test(body);
+}
+
+// Number of data rows (rows after the `|---|...|` separator that look
+// like `| ... |`). Used to enforce ">= 1 phase row + 1 Total row".
+function tableDataRowCount(body: string): number {
+  const lines = body.split(/\r?\n/);
+  let count = 0;
+  let pastSeparator = false;
+  for (const line of lines) {
+    if (/^\s*\|[\s\-:|]+\|\s*$/.test(line)) {
+      pastSeparator = true;
+      continue;
+    }
+    if (pastSeparator && /\|.*\|/.test(line) && line.trim().startsWith("|")) {
+      count++;
+    }
+  }
+  return count;
+}
+
 function openQuestionsNotEmpty(body: string): boolean {
   const row = body.match(/\|\s*Open\s+questions\s*\|([^|\n]*)\|/i);
   if (!row) return false;
@@ -147,6 +197,11 @@ const ACTION_HEADING = /^##\s+Action\b/mi;
 const JOBS_HEADING = /^##\s+Jobs\s+To\s+Be\s+Done\b/mi;
 const DESIGN_RATIONALE_HEADING = /^##\s+Design\s+Rationale\b/mi;
 const RULES_OR_CONTENT_HEADING = /^##\s+(Rules|Content)\b/mi;
+const WORK_ESTIMATE_HEADING = /^##\s+Work\s+Estimate\b/mi;
+const ACTIVE_OPERATOR_HEADING = /^###\s+Active\s+operator\s+time\b/mi;
+const WALL_CLOCK_HEADING = /^###\s+Wall[-\s]?clock\s+time\b/mi;
+const ASSUMPTIONS_HEADING = /^###\s+Assumptions\b/mi;
+const ACTUALS_HEADING = /^###\s+Actuals\b/mi;
 
 // ─── section checks ───────────────────────────────────────────────────────
 
@@ -346,6 +401,82 @@ function checkRulesOrContent(md: string): CheckResult {
   return pass();
 }
 
+// `## Work Estimate` (v1.4.0). Validates:
+//   - H2 exists
+//   - `### Active operator time` subsection: markdown table with
+//     `Phase` + `Estimate` headers, ≥1 phase row, a `Total` row
+//   - `### Wall-clock time` subsection: markdown table with
+//     `Wait dependency` + `Estimate` headers, ≥1 row, a `Total` row
+//   - `### Assumptions` subsection: ≥1 bullet (- or *)
+//   - `### Actuals (filled post-execution)` subsection: markdown table
+//     with required column headers `Phase`, `Estimate`, `Actual`, `Delta`
+function checkWorkEstimate(md: string): CheckResult {
+  if (!headingPresent(md, WORK_ESTIMATE_HEADING))
+    return fail('"## Work Estimate" heading not found');
+  const body = sectionBody(md, WORK_ESTIMATE_HEADING);
+
+  // Active operator time
+  if (!headingPresent(body, ACTIVE_OPERATOR_HEADING))
+    return fail('missing "### Active operator time" subsection');
+  const activeBody = subsectionBody(body, ACTIVE_OPERATOR_HEADING);
+  if (!tablePresent(activeBody))
+    return fail('"### Active operator time" missing markdown table');
+  const activeHeader = tableHeaderLine(activeBody);
+  if (!activeHeader || !/Phase/i.test(activeHeader) || !/Estimate/i.test(activeHeader))
+    return fail(
+      '"### Active operator time" table missing required column headers (Phase, Estimate)',
+    );
+  if (!tableHasTotalRow(activeBody))
+    return fail('"### Active operator time" table missing Total row');
+  if (tableDataRowCount(activeBody) < 2)
+    return fail(
+      '"### Active operator time" table needs at least 1 phase row plus a Total row',
+    );
+
+  // Wall-clock time
+  if (!headingPresent(body, WALL_CLOCK_HEADING))
+    return fail('missing "### Wall-clock time" subsection');
+  const wallBody = subsectionBody(body, WALL_CLOCK_HEADING);
+  if (!tablePresent(wallBody))
+    return fail('"### Wall-clock time" missing markdown table');
+  const wallHeader = tableHeaderLine(wallBody);
+  if (!wallHeader || !/Wait\s+dependency/i.test(wallHeader) || !/Estimate/i.test(wallHeader))
+    return fail(
+      '"### Wall-clock time" table missing required column headers (Wait dependency, Estimate)',
+    );
+  if (!tableHasTotalRow(wallBody))
+    return fail('"### Wall-clock time" table missing Total row');
+  if (tableDataRowCount(wallBody) < 2)
+    return fail(
+      '"### Wall-clock time" table needs at least 1 wait-dependency row plus a Total row',
+    );
+
+  // Assumptions
+  if (!headingPresent(body, ASSUMPTIONS_HEADING))
+    return fail('missing "### Assumptions" subsection');
+  const assumptionsBody = subsectionBody(body, ASSUMPTIONS_HEADING);
+  if (bulletListCount(assumptionsBody) < 1)
+    return fail('"### Assumptions" subsection has no bullets (- or *)');
+
+  // Actuals (filled post-execution)
+  if (!headingPresent(body, ACTUALS_HEADING))
+    return fail('missing "### Actuals (filled post-execution)" subsection');
+  const actualsBody = subsectionBody(body, ACTUALS_HEADING);
+  if (!tablePresent(actualsBody))
+    return fail('"### Actuals (filled post-execution)" missing markdown table');
+  const actualsHeader = tableHeaderLine(actualsBody);
+  if (!actualsHeader)
+    return fail('"### Actuals (filled post-execution)" table missing header row');
+  const required = ["Phase", "Estimate", "Actual", "Delta"];
+  const missing = required.filter((c) => !new RegExp(`\\b${c}\\b`, "i").test(actualsHeader));
+  if (missing.length > 0)
+    return fail(
+      `"### Actuals (filled post-execution)" table missing required column headers: ${missing.join(", ")}`,
+    );
+
+  return pass();
+}
+
 // ─── section definitions per spec type ────────────────────────────────────
 
 interface SectionDef {
@@ -353,6 +484,12 @@ interface SectionDef {
   label: string;
   check: (md: string) => CheckResult;
 }
+
+const WORK_ESTIMATE_SECTION: SectionDef = {
+  key: "work_estimate",
+  label: "Work Estimate",
+  check: checkWorkEstimate,
+};
 
 const FEAT_SECTIONS: SectionDef[] = [
   { key: "intent", label: "Intent", check: makeIntentCheck("feat") },
@@ -364,6 +501,7 @@ const FEAT_SECTIONS: SectionDef[] = [
   { key: "files_list", label: "Files created / updated", check: checkFilesList },
   { key: "models_applied", label: "Models Applied", check: checkModelsApplied },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const BUG_SECTIONS: SectionDef[] = [
@@ -374,6 +512,7 @@ const BUG_SECTIONS: SectionDef[] = [
   { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
   { key: "files", label: "Files", check: checkFiles },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const HOTFIX_SECTIONS: SectionDef[] = [
@@ -384,6 +523,7 @@ const HOTFIX_SECTIONS: SectionDef[] = [
   { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
   { key: "files", label: "Files", check: checkFiles },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const SPEC_SECTIONS: SectionDef[] = [
@@ -393,6 +533,7 @@ const SPEC_SECTIONS: SectionDef[] = [
   { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
   { key: "files_schema", label: "Files / Schema", check: checkFilesOrSchema },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const CHORE_SECTIONS: SectionDef[] = [
@@ -401,6 +542,7 @@ const CHORE_SECTIONS: SectionDef[] = [
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 1) },
   { key: "files", label: "Files", check: checkFiles },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const REFACTOR_SECTIONS: SectionDef[] = [
@@ -413,6 +555,7 @@ const REFACTOR_SECTIONS: SectionDef[] = [
   { key: "models_applied", label: "Models Applied", check: checkModelsApplied },
   { key: "migration_plan", label: "Migration Plan", check: checkMigrationPlan },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const RESEARCH_SECTIONS: SectionDef[] = [
@@ -422,6 +565,7 @@ const RESEARCH_SECTIONS: SectionDef[] = [
   { key: "report_format", label: "Report Format", check: checkReportFormat },
   { key: "migration_summary", label: "Subject Migration Summary", check: checkMigrationSummary },
   { key: "files", label: "Files", check: checkFiles },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const UX_SECTIONS: SectionDef[] = [
@@ -431,6 +575,7 @@ const UX_SECTIONS: SectionDef[] = [
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
   { key: "assets_files", label: "Assets / Files", check: checkFilesOrSchema },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 const BRAND_SECTIONS: SectionDef[] = [
@@ -440,6 +585,7 @@ const BRAND_SECTIONS: SectionDef[] = [
   { key: "acceptance_criteria", label: "Acceptance Criteria", check: (md) => checkAcceptanceCriteria(md, 2) },
   { key: "assets_files", label: "Assets / Files", check: checkFilesOrSchema },
   { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+  WORK_ESTIMATE_SECTION,
 ];
 
 export const SECTIONS_BY_TYPE: Record<SpecType, SectionDef[]> = {
