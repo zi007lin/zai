@@ -1,4 +1,5 @@
 .claude/commands/
+.claude/settings.local.json
 node_modules
 dist
 dist-ssr
