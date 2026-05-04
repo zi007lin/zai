@@ -13,3 +13,4 @@ test-results
 playwright-report
 .playwright
 env/
+registrar-audit.log

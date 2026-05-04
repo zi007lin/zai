@@ -111,3 +111,23 @@ To add a new pattern permanently for zai, append to the committed file
 and PR. To experiment locally, append to the local file (or accept the
 prompt). See the canonical reference doc for the full taxonomy and the
 `streettt-private` deny-heavy variant.
+
+## HTU Registrar
+
+Operator-only CLI for Cloudflare Registrar API (beta, April 2026). Wraps
+domain search / check / register / list with safety rails (`--confirm`,
+budget cap, premium flag, `--dry-run`, JSON-lines audit log). Script
+lives at `scripts/htu-registrar.mjs`; runs on Node.js 20+ with zero npm
+dependencies (built-in `fetch`).
+
+**Authority invariant:** registrar capability is operator-only in v1.
+ZiLin-Dev (the agent) does NOT have access to the API token and does
+NOT invoke the CLI. Tier-aware operation (v1.2) and bounded agent
+capability (v1.3) are deferred to separate SPECs in
+`zi007lin/htu-foundation`. Any future enablement requires a new spec
+with explicit legal review and per-run budget caps.
+
+For setup, usage, beta-API caveats, audit log schema, and forward
+roadmap, see `scripts/REGISTRAR.md` (canonical operator documentation).
+For SPEC, decision tree, game theory, and legal triggers, see
+`zi007lin/htu-foundation#66`.
