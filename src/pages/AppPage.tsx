@@ -105,6 +105,10 @@ export default function AppPage() {
           body: scoredBody,
           label: result.spec_type,
           repo: targetRepo,
+          // BUG #86: filename drives the `issues/<base>.scored.md`
+          // commit on the target repo so the audit-trail invariant
+          // ("every scored spec has a committed file") holds.
+          filename,
         }),
       });
       if (!issueRes.ok) {
