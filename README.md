@@ -46,6 +46,8 @@ The first piece of the SDD pipeline is live as a web scorer at **[demo.zai.htu.i
 4. Download the `.scored.md` — it carries the rubric result alongside your original content.
 5. Run `impl i <your-spec.scored.md>` via Claude Code. The impl gate refuses anything that isn't a passing score block, so the workflow either completes end-to-end or stops at the gate with a specific `needs_input` message telling you what to fix.
 
+The **Run Impl** button on the scorer page is a one-shot alternative: it commits the `.scored.md` to your target repo's `issues/` directory, files the GitHub issue with the same body, and dispatches `zilin_impl` to the ZiLin-Dev runner. Atomic by design — the commit must succeed before the issue is created (BUG #86), so the audit-trail invariant ("every scored spec has a corresponding committed file in `issues/`") is enforced at the handler level. The token configured for the ZAI worker (`ZZV_DISPATCH_TOKEN`) needs both `contents:write` and `issues:write` on the target repo; on a `contents:write` failure the UI surfaces an operator-actionable error rather than silently skipping the commit.
+
 ![Score your spec before it ships](docs/assets/zai-demo.gif)
 
 ---
