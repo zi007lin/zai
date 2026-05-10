@@ -11,7 +11,7 @@ interface Props {
   implState: ImplState;
   issueNumber: number | null;
   errorMsg: string;
-  targetRepo: string;
+  targetRepo: string | null;
 }
 
 const STAGGER_MS = 200;
@@ -304,7 +304,12 @@ export default function ScorePanel({
         <button
           type="button"
           onClick={onRunImpl}
-          disabled={!result.passed || implState === "dispatching" || implState === "queued"}
+          disabled={
+            !result.passed ||
+            !targetRepo ||
+            implState === "dispatching" ||
+            implState === "queued"
+          }
           className="flex-1 px-4 py-2.5 rounded-md bg-[var(--zai-teal)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ fontFamily: "var(--font-sans-zai)" }}
           data-testid="run-impl-button"
@@ -315,7 +320,16 @@ export default function ScorePanel({
         </button>
       </div>
 
-      {implState === "queued" && issueNumber !== null && (
+      {result.passed && !targetRepo && (
+        <div
+          className="mt-3 text-sm text-[#E15B5B]"
+          data-testid="run-impl-missing-repo"
+        >
+          ❌ Cannot dispatch: spec is missing <code>**Repo:**</code> header
+        </div>
+      )}
+
+      {implState === "queued" && issueNumber !== null && targetRepo && (
         <div
           className="mt-3 text-sm text-[var(--zai-teal)]"
           data-testid="run-impl-queued"

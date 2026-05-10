@@ -21,7 +21,15 @@ function downloadBlob(filename: string, contents: string) {
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
 
-const TARGET_REPO = "zi007lin/zai";
+// Non-greedy `.*?` skips any formatting (backticks, whitespace) between the
+// **Repo:** marker and the owner/repo token. Owner/repo character class
+// matches GitHub's allowed chars; first match on the header line wins.
+const REPO_HEADER_REGEX = /\*\*Repo:\*\*.*?([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/;
+
+function parseTargetRepo(markdown: string): string | null {
+  const match = markdown.match(REPO_HEADER_REGEX);
+  return match ? match[1] : null;
+}
 
 export default function AppPage() {
   const [filename, setFilename] = useState<string | null>(null);
@@ -70,8 +78,20 @@ export default function AppPage() {
     downloadBlob(scoredName, out);
   }, [filename, markdown, result]);
 
+  // Re-parse on every click from the currently-loaded markdown — never
+  // retain a target_repo value across spec loads. See bug #67.
+  const targetRepo = useMemo(
+    () => (markdown ? parseTargetRepo(markdown) : null),
+    [markdown]
+  );
+
   const handleRunImpl = useCallback(async () => {
     if (!filename || !markdown || !result || !result.passed) return;
+    if (!targetRepo) {
+      setImplState("error");
+      setErrorMsg("Cannot dispatch: spec is missing **Repo:** header");
+      return;
+    }
     setImplState("dispatching");
     setErrorMsg("");
     try {
@@ -84,7 +104,7 @@ export default function AppPage() {
           title: `${result.spec_type}: ${titleSlug}`,
           body: scoredBody,
           label: result.spec_type,
-          repo: TARGET_REPO,
+          repo: targetRepo,
         }),
       });
       if (!issueRes.ok) {
@@ -98,7 +118,7 @@ export default function AppPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           issue_number: issueData.issue_number,
-          repo: TARGET_REPO,
+          target_repo: targetRepo,
         }),
       });
       if (!dispatchRes.ok) {
@@ -109,7 +129,7 @@ export default function AppPage() {
       setImplState("error");
       setErrorMsg(e instanceof Error ? e.message : "Unknown error");
     }
-  }, [filename, markdown, result]);
+  }, [filename, markdown, result, targetRepo]);
 
   const header = useMemo(
     () => (
@@ -162,7 +182,7 @@ export default function AppPage() {
               implState={implState}
               issueNumber={issueNumber}
               errorMsg={errorMsg}
-              targetRepo={TARGET_REPO}
+              targetRepo={targetRepo}
             />
           ) : (
             <div
