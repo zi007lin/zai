@@ -744,8 +744,8 @@ describe("scoreSpec — gates and meta", () => {
     expect(r.gates[0]).toMatch(/chain/i);
   });
 
-  it("rubric version is 1.4.0", () => {
-    expect(scoreSpec(featSpec140, "2026-04-13__feat__x.md").rubric_version).toBe("1.4.0");
+  it("rubric version is 1.5.0", () => {
+    expect(scoreSpec(featSpec140, "2026-04-13__feat__x.md").rubric_version).toBe("1.5.0");
   });
 
   it("non-matching filename throws SpecTypeError (previously silently fell back to feat)", () => {
@@ -1328,5 +1328,260 @@ just a paragraph with no bullets at all.
     expect(r.section_reasons.work_estimate).toMatch(/Actuals.*missing required column headers/);
     expect(r.section_reasons.work_estimate).toMatch(/Actual/);
     expect(r.section_reasons.work_estimate).toMatch(/Delta/);
+  });
+});
+
+// ─── EPIC rubric (v1.5.0) ─────────────────────────────────────────────────
+//
+// 10-check coverage for the EPIC spec type added in FEAT zzv-skills#27.
+// Includes the two edge cases the spec calls out explicitly: anti-bypass
+// (a 1-phase document fails check #3) and explicit-none reversibility
+// (`Reversibility: none — see Risks #N` passes check #6).
+
+const epicSpec = `# EPIC: example tracking issue
+
+## Intent
+A tight strategic framing well under two hundred words: why this multi-
+phase initiative exists and what cross-team work it coordinates.
+
+## Architectural decision
+| Option | Chosen/Rejected | Rationale |
+|---|---|---|
+| A | Chosen | best fit, lowest blast radius |
+| B | Rejected | too costly to maintain |
+
+## Phases
+
+### Phase 1 — foundation
+- Type: feat
+- Status: in progress
+- Depends on: nothing
+- Acceptance: foundation tests green
+- [ ] foundation shipped
+
+### Phase 2 — rollout
+- Type: chore
+- Status: planned
+- Blocks: no downstream work yet
+- Acceptance: rollout verified in prod
+- [ ] rollout complete
+
+## Cross-model validation
+| Model | Verdict |
+|---|---|
+| #1 Game Theory Cooperative | incentive-compatible |
+| #2 Decision Tree | options mapped, choice recorded |
+| #15 Inversion / Premortem | failure modes enumerated |
+
+## Risks & mitigations
+| Risk | Mitigation |
+|---|---|
+| version drift between engines | bounded re-port window |
+| scope creep across phases | per-phase acceptance gates |
+
+## Reversibility
+Reversibility: none — see Risks #1.
+
+## Cost projection
+- At launch: two PRs, ~5h wall-clock
+- At scale: linear with phase count
+
+## Dependencies
+- None
+
+## Tracking checklist
+- [ ] Phase 1 merged
+- [ ] Phase 2 merged
+
+## Legal triggers
+None.
+`;
+
+describe("scoreSpec — epic (v1.5.0)", () => {
+  it("scores a compliant EPIC spec 10/10 passed", () => {
+    const r = scoreSpec(epicSpec, "2026-05-11__epic__example.md");
+    expect(r.spec_type).toBe("epic");
+    expect(r.required_count).toBe(10);
+    expect(r.score).toBe("10/10");
+    expect(r.passed).toBe(true);
+    expect(r.rubric_version).toBe("1.5.0");
+    for (const key of r.section_order) {
+      if (r.sections[key] !== "FAIL") expect(r.section_reasons[key]).toBeNull();
+    }
+  });
+
+  it("section order matches the 10-check EPIC rubric", () => {
+    const r = scoreSpec(epicSpec, "2026-05-11__epic__example.md");
+    expect(r.section_order).toEqual([
+      "intent",
+      "architectural_decision",
+      "phases",
+      "cross_model_validation",
+      "risks_mitigations",
+      "escape_hatch",
+      "cost_projection",
+      "dependencies",
+      "tracking_checklist",
+      "legal_triggers",
+    ]);
+  });
+
+  it("[anti-bypass] a 1-phase document fails check #3 (phases)", () => {
+    const md = epicSpec.replace(
+      /### Phase 2 — rollout[\s\S]*?(?=\n## Cross-model)/,
+      "",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.phases).toBe("FAIL");
+    expect(r.section_reasons.phases).toMatch(/at least 2/i);
+    expect(r.section_reasons.phases).toMatch(/non-EPIC type/i);
+  });
+
+  it("[explicit-none] `Reversibility: none — see Risks #N` passes check #6", () => {
+    // The base fixture already uses this phrasing; assert it directly.
+    const r = scoreSpec(epicSpec, "2026-05-11__epic__example.md");
+    expect(r.sections.escape_hatch).toBe("PASS");
+  });
+
+  it("accepts `## Escape hatch` as an alternative to `## Reversibility`", () => {
+    const md = epicSpec.replace(
+      /## Reversibility\nReversibility: none — see Risks #1\.\n/,
+      "## Escape hatch\nIf Phase 2 stalls past the bound, roll back Phase 1's version bump.\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.escape_hatch).toBe("PASS");
+  });
+
+  it("empty Reversibility section fails check #6", () => {
+    const md = epicSpec.replace(
+      /## Reversibility\nReversibility: none — see Risks #1\.\n/,
+      "## Reversibility\n\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.escape_hatch).toBe("FAIL");
+    expect(r.section_reasons.escape_hatch).toMatch(/empty/i);
+  });
+
+  it("missing `## Cross-model validation` fails check #4", () => {
+    const md = epicSpec.replace(/## Cross-model validation\n[\s\S]*?(?=\n## Risks)/, "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.cross_model_validation).toBe("FAIL");
+    expect(r.section_reasons.cross_model_validation).toMatch(/Cross-model validation/i);
+  });
+
+  it("cross-model with fewer than 3 distinct model refs fails check #4", () => {
+    const md = epicSpec.replace(
+      /\| #2 Decision Tree \| options mapped, choice recorded \|\n\| #15 Inversion \/ Premortem \| failure modes enumerated \|\n/,
+      "",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.cross_model_validation).toBe("FAIL");
+    expect(r.section_reasons.cross_model_validation).toMatch(/at least 3 distinct/i);
+  });
+
+  it("phase missing a type label fails check #3", () => {
+    const md = epicSpec.replace("- Type: feat\n", "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.phases).toBe("FAIL");
+    expect(r.section_reasons.phases).toMatch(/type label/i);
+  });
+
+  it("phase missing a status line fails check #3", () => {
+    const md = epicSpec.replace("- Status: in progress\n", "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.phases).toBe("FAIL");
+    expect(r.section_reasons.phases).toMatch(/status/i);
+  });
+
+  it("phase missing a Depends-on/Blocks line fails check #3", () => {
+    const md = epicSpec.replace("- Depends on: nothing\n", "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.phases).toBe("FAIL");
+    expect(r.section_reasons.phases).toMatch(/Depends on.*Blocks/i);
+  });
+
+  it("phase missing acceptance criteria fails check #3", () => {
+    // Remove both the checkbox and the "Acceptance:" line from Phase 1.
+    const md = epicSpec
+      .replace("- Acceptance: foundation tests green\n", "")
+      .replace("- [ ] foundation shipped\n", "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.phases).toBe("FAIL");
+    expect(r.section_reasons.phases).toMatch(/acceptance/i);
+  });
+
+  it("tracking checklist with fewer checkboxes than phases fails check #9", () => {
+    const md = epicSpec.replace("- [ ] Phase 2 merged\n", "");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.tracking_checklist).toBe("FAIL");
+    expect(r.section_reasons.tracking_checklist).toMatch(/checkbox per Phase/i);
+  });
+
+  it("architectural decision without a table fails check #2", () => {
+    const md = epicSpec.replace(
+      /\| Option \| Chosen\/Rejected \| Rationale \|\n\|---\|---\|---\|\n\| A \| Chosen \| best fit, lowest blast radius \|\n\| B \| Rejected \| too costly to maintain \|\n/,
+      "We picked A over B.\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.architectural_decision).toBe("FAIL");
+    expect(r.section_reasons.architectural_decision).toMatch(/markdown table/i);
+  });
+
+  it("risks & mitigations without a table fails check #5", () => {
+    const md = epicSpec.replace(
+      /\| Risk \| Mitigation \|\n\|---\|---\|\n\| version drift between engines \| bounded re-port window \|\n\| scope creep across phases \| per-phase acceptance gates \|\n/,
+      "Risks are managed via phase gates.\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.risks_mitigations).toBe("FAIL");
+    expect(r.section_reasons.risks_mitigations).toMatch(/markdown table/i);
+  });
+
+  it("cost projection with only one line fails check #7", () => {
+    const md = epicSpec.replace(
+      "- At launch: two PRs, ~5h wall-clock\n- At scale: linear with phase count\n",
+      "- At launch: two PRs\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.cost_projection).toBe("FAIL");
+    expect(r.section_reasons.cost_projection).toMatch(/table or ≥2/i);
+  });
+
+  it("cost projection as a table with ≥2 rows passes check #7", () => {
+    const md = epicSpec.replace(
+      "## Cost projection\n- At launch: two PRs, ~5h wall-clock\n- At scale: linear with phase count\n",
+      "## Cost projection\n| Horizon | Cost |\n|---|---|\n| At launch | 2 PRs / ~5h |\n| At scale | linear with phases |\n",
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.cost_projection).toBe("PASS");
+  });
+
+  it("accepts `## Dependencies on other tracked work` as the dependencies heading", () => {
+    const md = epicSpec.replace("## Dependencies\n- None\n", "## Dependencies on other tracked work\n- htu-foundation#67\n");
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.dependencies).toBe("PASS");
+  });
+
+  it("intent over 200 words fails check #1 for epic", () => {
+    const long = Array.from({ length: 210 }, (_, i) => `word${i}`).join(" ");
+    const md = epicSpec.replace(
+      /## Intent\nA tight strategic framing[^\n]*\n[^\n]*\n/,
+      `## Intent\n${long}\n`,
+    );
+    const r = scoreSpec(md, "2026-05-11__epic__x.md");
+    expect(r.sections.intent).toBe("FAIL");
+    expect(r.section_reasons.intent).toMatch(/200-word cap/i);
+    expect(r.section_reasons.intent).toMatch(/EPIC/);
+  });
+
+  it("`epic` is in KNOWN_TYPES and has a RUBRIC_SECTION_KEYS entry with 10 checks", () => {
+    expect((KNOWN_TYPES as readonly string[]).includes("epic")).toBe(true);
+    expect(RUBRIC_SECTION_KEYS.epic).toBeDefined();
+    expect(RUBRIC_SECTION_KEYS.epic.length).toBe(10);
+    expect(INTENT_CAPS.epic).toBe(200);
+  });
+
+  it("detectSpecType recognizes the epic filename prefix", () => {
+    expect(detectSpecType("2026-05-11__epic__example.md")).toBe("epic");
   });
 });
