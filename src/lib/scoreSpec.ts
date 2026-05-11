@@ -9,7 +9,8 @@ export type SpecType =
   | "refactor"
   | "research"
   | "ux"
-  | "brand";
+  | "brand"
+  | "epic";
 
 export interface ScoreResult {
   rubric_version: string;
@@ -34,12 +35,16 @@ export class SpecTypeError extends Error {
   }
 }
 
-const RUBRIC_VERSION = "1.4.0";
+// v1.5.0 (FEAT zzv-skills#27): adds EPIC as a first-class spec type —
+// 10 EPIC-specific checks for tracking issues that coordinate multi-
+// phase strategic work. Additive only; no existing spec type changes.
+const RUBRIC_VERSION = "1.5.0";
 
 // Per-type Intent word caps. FEAT/BUG/UX/BRAND stay at 150 where compression
 // is a virtue; CHORE stays at 100; SPEC and REFACTOR rise to 250 because they
 // must frame actors, scope, deferrals, reversibility; RESEARCH rises to 200
-// to set up context for the research questions that follow.
+// to set up context for the research questions that follow; EPIC rises to 200
+// to frame the strategic problem space ahead of the Phases breakdown.
 export const INTENT_CAPS: Record<SpecType, number> = {
   feat: 150,
   bug: 150,
@@ -50,6 +55,7 @@ export const INTENT_CAPS: Record<SpecType, number> = {
   research: 200,
   ux: 150,
   brand: 150,
+  epic: 200,
 };
 
 // ─── helpers ──────────────────────────────────────────────────────────────
@@ -202,6 +208,17 @@ const ACTIVE_OPERATOR_HEADING = /^###\s+Active\s+operator\s+time\b/mi;
 const WALL_CLOCK_HEADING = /^###\s+Wall[-\s]?clock\s+time\b/mi;
 const ASSUMPTIONS_HEADING = /^###\s+Assumptions\b/mi;
 const ACTUALS_HEADING = /^###\s+Actuals\b/mi;
+
+// ─── EPIC headings (v1.5.0) ───────────────────────────────────────────────
+const EPIC_ARCH_DECISION_HEADING = /^##\s+Architectural\s+decision\b/mi;
+const EPIC_PHASES_HEADING = /^##\s+Phases\b/mi;
+const EPIC_PHASE_SUBHEADING_RE = /^###\s+Phase\b/i; // per-line test in splitPhases
+const EPIC_CROSS_MODEL_HEADING = /^##\s+Cross[-\s]?model\s+validation\b/mi;
+const EPIC_RISKS_HEADING = /^##\s+Risks\s*(&|and)\s*mitigations\b/mi;
+const EPIC_ESCAPE_OR_REVERSIBILITY_HEADING = /^##\s+(Escape\s+hatch|Reversibility)\b/mi;
+const EPIC_COST_HEADING = /^##\s+Cost\s+projection\b/mi;
+const EPIC_DEPENDENCIES_HEADING = /^##\s+Dependencies(\s+on\s+other\s+tracked\s+work)?\b/mi;
+const EPIC_TRACKING_HEADING = /^##\s+Tracking\s+checklist\b/mi;
 
 // ─── section checks ───────────────────────────────────────────────────────
 
@@ -477,6 +494,164 @@ function checkWorkEstimate(md: string): CheckResult {
   return pass();
 }
 
+// ─── EPIC section checks (v1.5.0) ─────────────────────────────────────────
+
+const PHASE_TYPE_TOKEN_RE = /\b(feat|bug|spec|chore|refactor|ux|brand)\b/i;
+const DEPENDS_OR_BLOCKS_RE = /\b(depends\s+on|blocks)\b/i;
+
+// Split a `## Phases` section body into per-`### Phase` chunks. Lines
+// before the first `### Phase` are discarded (intro prose). Each chunk
+// retains its own `### Phase …` heading line plus everything up to the
+// next `### Phase` heading.
+function splitPhases(phasesBody: string): string[] {
+  const out: string[] = [];
+  let current: string[] | null = null;
+  for (const line of phasesBody.split(/\r?\n/)) {
+    if (EPIC_PHASE_SUBHEADING_RE.test(line)) {
+      if (current) out.push(current.join("\n"));
+      current = [line];
+    } else if (current) {
+      current.push(line);
+    }
+  }
+  if (current) out.push(current.join("\n"));
+  return out;
+}
+
+function checkEpicArchDecision(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_ARCH_DECISION_HEADING))
+    return fail('"## Architectural decision" heading not found');
+  const body = sectionBody(md, EPIC_ARCH_DECISION_HEADING);
+  if (!tablePresent(body))
+    return fail(
+      '"## Architectural decision" requires a markdown table (Option | Chosen/Rejected | Rationale)',
+    );
+  const rows = tableDataRowCount(body);
+  if (rows < 2)
+    return fail(
+      `"## Architectural decision" table needs ≥2 option rows — found ${rows}`,
+    );
+  return pass();
+}
+
+function checkEpicPhases(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_PHASES_HEADING))
+    return fail('"## Phases" heading not found');
+  const phases = splitPhases(sectionBody(md, EPIC_PHASES_HEADING));
+  if (phases.length < 2)
+    return fail(
+      `at least 2 "### Phase" subheadings required — found ${phases.length} ` +
+        `(single-phase strategic work should be filed as the appropriate non-EPIC type)`,
+    );
+  for (let i = 0; i < phases.length; i++) {
+    const p = phases[i];
+    const tag = `phase #${i + 1}`;
+    if (!PHASE_TYPE_TOKEN_RE.test(p))
+      return fail(
+        `${tag} missing a type label (one of feat|bug|spec|chore|refactor|ux|brand)`,
+      );
+    if (!/\bstatus\b/i.test(p)) return fail(`${tag} missing a "status" line`);
+    if (!DEPENDS_OR_BLOCKS_RE.test(p))
+      return fail(`${tag} missing a "Depends on" or "Blocks" line`);
+    if (checkboxCount(p) < 1 && !/\bacceptance\b/i.test(p))
+      return fail(
+        `${tag} missing acceptance criteria (a checkbox or an "acceptance" line)`,
+      );
+  }
+  return pass();
+}
+
+function checkEpicCrossModel(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_CROSS_MODEL_HEADING))
+    return fail('"## Cross-model validation" heading not found');
+  const body = sectionBody(md, EPIC_CROSS_MODEL_HEADING);
+  const refs = new Set<string>();
+  for (const m of body.matchAll(/#(\d{1,2})\b/g)) {
+    const n = Number(m[1]);
+    if (n >= 1 && n <= 16) refs.add(String(n));
+  }
+  if (refs.size < 3)
+    return fail(
+      `at least 3 distinct model references (#1–#16) required — found ${refs.size}`,
+    );
+  const structuredLines = bulletListCount(body) + numberedListCount(body);
+  if (!tablePresent(body) && structuredLines < refs.size)
+    return fail(
+      "expected a verdict per referenced model (a markdown table or one list line per model)",
+    );
+  return pass();
+}
+
+function checkEpicRisks(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_RISKS_HEADING))
+    return fail('"## Risks & mitigations" heading not found');
+  const body = sectionBody(md, EPIC_RISKS_HEADING);
+  if (!tablePresent(body))
+    return fail(
+      '"## Risks & mitigations" requires a markdown table (Risk | Mitigation)',
+    );
+  const rows = tableDataRowCount(body);
+  if (rows < 2)
+    return fail(`"## Risks & mitigations" table needs ≥2 rows — found ${rows}`);
+  return pass();
+}
+
+function checkEpicEscapeOrReversibility(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_ESCAPE_OR_REVERSIBILITY_HEADING))
+    return fail('one of "## Escape hatch" or "## Reversibility" required');
+  const body = sectionBody(md, EPIC_ESCAPE_OR_REVERSIBILITY_HEADING);
+  if (wordCount(body) === 0)
+    return fail(
+      'Escape hatch / Reversibility section is empty (use "Reversibility: none — see Risks #N" for genuinely irreversible EPICs)',
+    );
+  return pass();
+}
+
+function checkEpicCost(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_COST_HEADING))
+    return fail('"## Cost projection" heading not found');
+  const body = sectionBody(md, EPIC_COST_HEADING);
+  if (tablePresent(body)) {
+    if (tableDataRowCount(body) < 2)
+      return fail(
+        '"## Cost projection" table needs ≥2 rows (at-launch + at-scale minimum)',
+      );
+    return pass();
+  }
+  const items = bulletListCount(body) + numberedListCount(body);
+  if (items < 2)
+    return fail(
+      '"## Cost projection" needs a table or ≥2 itemized lines (at-launch + at-scale minimum)',
+    );
+  return pass();
+}
+
+function checkEpicDependencies(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_DEPENDENCIES_HEADING))
+    return fail(
+      '"## Dependencies" heading not found (also accepts "## Dependencies on other tracked work")',
+    );
+  const body = sectionBody(md, EPIC_DEPENDENCIES_HEADING);
+  if (wordCount(body) === 0)
+    return fail('"## Dependencies" section is empty (list ≥1 item or write "None")');
+  return pass();
+}
+
+function checkEpicTracking(md: string): CheckResult {
+  if (!headingPresent(md, EPIC_TRACKING_HEADING))
+    return fail('"## Tracking checklist" heading not found');
+  const boxes = checkboxCount(sectionBody(md, EPIC_TRACKING_HEADING));
+  if (boxes < 1) return fail('"## Tracking checklist" needs ≥1 checkbox');
+  let phaseCount = 0;
+  if (headingPresent(md, EPIC_PHASES_HEADING))
+    phaseCount = splitPhases(sectionBody(md, EPIC_PHASES_HEADING)).length;
+  if (phaseCount >= 2 && boxes < phaseCount)
+    return fail(
+      `"## Tracking checklist" needs ≥1 checkbox per Phase — ${phaseCount} phases declared, ${boxes} checkbox(es) found`,
+    );
+  return pass();
+}
+
 // ─── section definitions per spec type ────────────────────────────────────
 
 interface SectionDef {
@@ -588,6 +763,23 @@ const BRAND_SECTIONS: SectionDef[] = [
   WORK_ESTIMATE_SECTION,
 ];
 
+// EPIC — 10 checks (v1.5.0). Tracking issues that coordinate multi-phase
+// strategic work. Distinct from FEAT: Phases (≥2, anti-bypass), cross-model
+// validation, an escape hatch / reversibility statement, and a per-phase
+// tracking checklist have no FEAT-rubric equivalent.
+const EPIC_SECTIONS: SectionDef[] = [
+  { key: "intent", label: "Intent", check: makeIntentCheck("epic") },
+  { key: "architectural_decision", label: "Architectural decision", check: checkEpicArchDecision },
+  { key: "phases", label: "Phases", check: checkEpicPhases },
+  { key: "cross_model_validation", label: "Cross-model validation", check: checkEpicCrossModel },
+  { key: "risks_mitigations", label: "Risks & mitigations", check: checkEpicRisks },
+  { key: "escape_hatch", label: "Escape hatch / Reversibility", check: checkEpicEscapeOrReversibility },
+  { key: "cost_projection", label: "Cost projection", check: checkEpicCost },
+  { key: "dependencies", label: "Dependencies", check: checkEpicDependencies },
+  { key: "tracking_checklist", label: "Tracking checklist", check: checkEpicTracking },
+  { key: "legal_triggers", label: "Legal triggers", check: checkLegalTriggers },
+];
+
 export const SECTIONS_BY_TYPE: Record<SpecType, SectionDef[]> = {
   feat: FEAT_SECTIONS,
   bug: BUG_SECTIONS,
@@ -598,10 +790,16 @@ export const SECTIONS_BY_TYPE: Record<SpecType, SectionDef[]> = {
   research: RESEARCH_SECTIONS,
   ux: UX_SECTIONS,
   brand: BRAND_SECTIONS,
+  epic: EPIC_SECTIONS,
 };
 
 // Ordered canonical section keys per type. Exported for the drift-detection
 // test so it can compare against ZAI_SYSTEM_INSTRUCTIONS.md §Appendix.
+// NOTE (v1.5.0): `epic` is intentionally NOT yet in the §Appendix table —
+// the ZAI_SYSTEM_INSTRUCTIONS.md update is a deferred downstream FEAT. The
+// drift test iterates appendix→code (documented types must have impls), so
+// adding `epic` to the code without the doc entry does not break it; the
+// reverse direction (code→doc) is unchecked by design until that FEAT lands.
 export const RUBRIC_SECTION_KEYS: Record<SpecType, string[]> = {
   feat: FEAT_SECTIONS.map((s) => s.key),
   bug: BUG_SECTIONS.map((s) => s.key),
@@ -612,6 +810,7 @@ export const RUBRIC_SECTION_KEYS: Record<SpecType, string[]> = {
   research: RESEARCH_SECTIONS.map((s) => s.key),
   ux: UX_SECTIONS.map((s) => s.key),
   brand: BRAND_SECTIONS.map((s) => s.key),
+  epic: EPIC_SECTIONS.map((s) => s.key),
 };
 
 // ─── type detection ───────────────────────────────────────────────────────
@@ -626,6 +825,7 @@ export const KNOWN_TYPES: readonly SpecType[] = [
   "research",
   "ux",
   "brand",
+  "epic",
 ];
 
 export function detectSpecType(filename: string): SpecType {
