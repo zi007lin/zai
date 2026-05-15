@@ -38,7 +38,8 @@ function prefersReducedMotion(): boolean {
 function provenanceLabel(source: DetectionSource): string | null {
   if (source === "filename") return null;
   if (source === "h1") return "inferred from H1";
-  return "inferred from frontmatter";
+  if (source === "frontmatter") return "inferred from frontmatter";
+  return "manually selected";
 }
 
 export default function ScorePanel({

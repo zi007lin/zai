@@ -3,6 +3,7 @@ import {
   SpecTypeError,
   detectSpecType,
   detectSpecTypeWithFallback,
+  resolveManual,
   type DetectionResult,
   type DetectionSource,
   type SpecType,
@@ -15,6 +16,7 @@ export {
   SpecTypeError,
   detectSpecType,
   detectSpecTypeWithFallback,
+  resolveManual,
   type DetectionResult,
   type DetectionSource,
   type SpecType,
@@ -828,11 +830,11 @@ function extractGates(markdown: string): string[] {
 
 // ─── entry point ──────────────────────────────────────────────────────────
 
-export function scoreSpec(markdown: string, filename: string = ""): ScoreResult {
-  const { type: specType, source: typeSource } = detectSpecTypeWithFallback(
-    filename,
-    markdown,
-  );
+function scoreWithResolution(
+  markdown: string,
+  resolution: DetectionResult,
+): ScoreResult {
+  const { type: specType, source: typeSource } = resolution;
   const defs = SECTIONS_BY_TYPE[specType];
 
   const sections: Record<string, SectionStatus> = {};
@@ -868,4 +870,22 @@ export function scoreSpec(markdown: string, filename: string = ""): ScoreResult 
     gates,
     type_source: typeSource,
   };
+}
+
+export function scoreSpec(markdown: string, filename: string = ""): ScoreResult {
+  return scoreWithResolution(
+    markdown,
+    detectSpecTypeWithFallback(filename, markdown),
+  );
+}
+
+// Bypass auto-detection and score against a caller-asserted spec type.
+// Used by the TypeSelector path when the operator picks a type after
+// the auto-detect chain has thrown. Returns `type_source: 'manual'` so
+// downstream readers can tell explicit picks from inferred detection.
+export function scoreSpecWithType(
+  markdown: string,
+  manualType: SpecType,
+): ScoreResult {
+  return scoreWithResolution(markdown, resolveManual(manualType));
 }

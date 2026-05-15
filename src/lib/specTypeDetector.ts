@@ -22,11 +22,19 @@ export type SpecType =
   | "brand"
   | "epic";
 
-export type DetectionSource = "filename" | "h1" | "frontmatter";
+export type DetectionSource = "filename" | "h1" | "frontmatter" | "manual";
 
 export interface DetectionResult {
   type: SpecType;
   source: DetectionSource;
+}
+
+// Manual resolution path. Used when the auto-detect chain has exhausted
+// (filename / H1 / frontmatter all miss) and the operator picks a type
+// from the TypeSelector. Carries `source: 'manual'` so downstream
+// readers can distinguish user-asserted type from inferred type.
+export function resolveManual(type: SpecType): DetectionResult {
+  return { type, source: "manual" };
 }
 
 export const KNOWN_TYPES: readonly SpecType[] = [
