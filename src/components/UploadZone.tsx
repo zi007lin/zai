@@ -1,43 +1,55 @@
 import { useCallback, useRef, useState } from "react";
 
+export type UploadState =
+  | { kind: "preupload" }
+  | { kind: "loading"; filename: string }
+  | { kind: "loaded"; filename: string }
+  | { kind: "error" };
+
 interface Props {
   onFile: (name: string, contents: string) => void;
   onDownloadTemplate: () => void;
-  loadedFilename: string | null;
+  state: UploadState;
 }
 
 type DragState = "idle" | "dragging";
 
-export default function UploadZone({
-  onFile,
-  onDownloadTemplate,
-  loadedFilename,
-}: Props) {
+export default function UploadZone({ onFile, onDownloadTemplate, state }: Props) {
   const [dragState, setDragState] = useState<DragState>("idle");
-  const [error, setError] = useState<string | null>(null);
+  const [fileTypeError, setFileTypeError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
-      setError(null);
+      setFileTypeError(null);
       const file = files?.[0];
       if (!file) return;
       if (!/\.md$/i.test(file.name)) {
-        setError("Only .md files are accepted.");
+        setFileTypeError("Only .md files are accepted.");
         return;
       }
       const text = await file.text();
       onFile(file.name, text);
     },
-    [onFile]
+    [onFile],
   );
+
+  const isLoaded = state.kind === "loaded";
+  const isLoading = state.kind === "loading";
+  const filenameToShow = isLoaded || isLoading ? state.filename : null;
 
   const borderClass =
     dragState === "dragging"
       ? "border-[var(--zai-teal)]"
-      : loadedFilename
-      ? "border-[var(--zai-teal)]/60"
-      : "border-[var(--zai-border)]";
+      : isLoaded
+        ? "border-[var(--zai-teal)]/60"
+        : "border-[var(--zai-border)]";
+
+  const headlineText = isLoading
+    ? "Scoring spec…"
+    : isLoaded
+      ? "Spec loaded"
+      : "Drop a spec file";
 
   return (
     <div
@@ -60,6 +72,7 @@ export default function UploadZone({
         handleFiles(e.dataTransfer.files);
       }}
       data-testid="upload-zone"
+      data-state={state.kind}
     >
       <div className="flex-1 flex flex-col items-center justify-center text-center py-8">
         <div
@@ -85,20 +98,24 @@ export default function UploadZone({
           className="text-xl"
           style={{ fontFamily: "var(--font-sans-zai)", fontWeight: 600 }}
         >
-          {loadedFilename ? "Spec loaded" : "Drop a spec file"}
+          {headlineText}
         </h3>
         <p className="mt-2 text-sm text-[var(--zai-muted)]">
-          {loadedFilename ? (
+          {filenameToShow ? (
             <span style={{ fontFamily: "var(--font-mono-zai)" }}>
-              {loadedFilename}
+              {filenameToShow}
             </span>
           ) : (
-            <>or click to pick a <span style={{ fontFamily: "var(--font-mono-zai)" }}>.md</span> file</>
+            <>
+              or click to pick a{" "}
+              <span style={{ fontFamily: "var(--font-mono-zai)" }}>.md</span>{" "}
+              file
+            </>
           )}
         </p>
-        {error && (
+        {fileTypeError && (
           <p className="mt-3 text-sm text-red-400" role="alert">
-            {error}
+            {fileTypeError}
           </p>
         )}
       </div>
