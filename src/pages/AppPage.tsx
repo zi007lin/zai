@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
-import UploadZone from "../components/UploadZone";
+import UploadZone, { type UploadState } from "../components/UploadZone";
 import ScorePanel from "../components/ScorePanel";
 import ScoreExample from "../components/ScoreExample";
 import PipelineSteps from "../components/PipelineSteps";
+import ErrorBanner from "../components/ErrorBanner";
 import { scoreSpec, type ScoreResult } from "../lib/scoreSpec";
 import { renderScoredSpec } from "../lib/renderScoredSpec";
 import { SPEC_TEMPLATE } from "../lib/specTemplate";
@@ -38,33 +39,53 @@ export default function AppPage() {
   const [implState, setImplState] = useState<ImplState>("idle");
   const [issueNumber, setIssueNumber] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [uploadState, setUploadState] = useState<UploadState>({
+    kind: "preupload",
+  });
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const handleFile = useCallback((name: string, contents: string) => {
-    setFilename(name);
-    setMarkdown(contents);
-    const scored = scoreSpec(contents, name);
-    setResult(scored);
-    setImplState("idle");
-    setIssueNumber(null);
-    setErrorMsg("");
+  const handleFile = useCallback(async (name: string, contents: string) => {
+    setUploadState({ kind: "loading", filename: name });
+    setUploadError(null);
+    // Yield once so the loading state is observable; scoring itself is
+    // synchronous CPU work, but the UI contract requires preupload →
+    // loading → loaded|error with no skipped transitions.
+    await Promise.resolve();
+    try {
+      const scored = scoreSpec(contents, name);
+      setFilename(name);
+      setMarkdown(contents);
+      setResult(scored);
+      setUploadState({ kind: "loaded", filename: name });
+      setImplState("idle");
+      setIssueNumber(null);
+      setErrorMsg("");
 
-    // Fire-and-forget: log section results to CF Analytics
-    const events = scored.section_order.map((key) => ({
-      section: key,
-      status: scored.sections[key],
-      reason: scored.section_reasons[key],
-      spec_type: scored.spec_type,
-      rubric_version: scored.rubric_version,
-    }));
-    fetch("/api/score", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        rubric_version: scored.rubric_version,
+      const events = scored.section_order.map((key) => ({
+        section: key,
+        status: scored.sections[key],
+        reason: scored.section_reasons[key],
         spec_type: scored.spec_type,
-        events,
-      }),
-    }).catch(() => {});
+        rubric_version: scored.rubric_version,
+      }));
+      fetch("/api/score", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rubric_version: scored.rubric_version,
+          spec_type: scored.spec_type,
+          events,
+        }),
+      }).catch(() => {});
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to score spec.";
+      setFilename(null);
+      setMarkdown(null);
+      setResult(null);
+      setUploadState({ kind: "error" });
+      setUploadError(message);
+    }
   }, []);
 
   const handleDownloadTemplate = useCallback(() => {
@@ -175,7 +196,7 @@ export default function AppPage() {
           <UploadZone
             onFile={handleFile}
             onDownloadTemplate={handleDownloadTemplate}
-            loadedFilename={filename}
+            state={uploadState}
           />
           {result && filename ? (
             <ScorePanel
@@ -188,6 +209,8 @@ export default function AppPage() {
               errorMsg={errorMsg}
               targetRepo={targetRepo}
             />
+          ) : uploadError ? (
+            <ErrorBanner message={uploadError} />
           ) : (
             <div
               className="rounded-xl border border-dashed border-[var(--zai-border)] bg-[var(--zai-card)]/40 p-8 flex items-center justify-center text-sm text-[var(--zai-muted)]"

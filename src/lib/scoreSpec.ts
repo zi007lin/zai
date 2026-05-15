@@ -1,16 +1,24 @@
+import {
+  KNOWN_TYPES,
+  SpecTypeError,
+  detectSpecType,
+  detectSpecTypeWithFallback,
+  type DetectionResult,
+  type DetectionSource,
+  type SpecType,
+} from "./specTypeDetector";
+
 export type SectionStatus = "PASS" | "FAIL" | "SKIP";
 
-export type SpecType =
-  | "feat"
-  | "bug"
-  | "hotfix"
-  | "spec"
-  | "chore"
-  | "refactor"
-  | "research"
-  | "ux"
-  | "brand"
-  | "epic";
+export {
+  KNOWN_TYPES,
+  SpecTypeError,
+  detectSpecType,
+  detectSpecTypeWithFallback,
+  type DetectionResult,
+  type DetectionSource,
+  type SpecType,
+};
 
 export interface ScoreResult {
   rubric_version: string;
@@ -24,15 +32,7 @@ export interface ScoreResult {
   section_order: string[];
   section_labels: Record<string, string>;
   gates: string[];
-}
-
-export class SpecTypeError extends Error {
-  constructor(raw: string, known: readonly string[]) {
-    super(
-      `Unknown spec type "${raw}". Known: ${known.join(", ")}. Rename the file or add the type to ZAI_SYSTEM_INSTRUCTIONS.md.`,
-    );
-    this.name = "SpecTypeError";
-  }
+  type_source: DetectionSource;
 }
 
 // v1.5.0 (FEAT zzv-skills#27): adds EPIC as a first-class spec type —
@@ -813,38 +813,6 @@ export const RUBRIC_SECTION_KEYS: Record<SpecType, string[]> = {
   epic: EPIC_SECTIONS.map((s) => s.key),
 };
 
-// ─── type detection ───────────────────────────────────────────────────────
-
-export const KNOWN_TYPES: readonly SpecType[] = [
-  "feat",
-  "bug",
-  "hotfix",
-  "spec",
-  "chore",
-  "refactor",
-  "research",
-  "ux",
-  "brand",
-  "epic",
-];
-
-export function detectSpecType(filename: string): SpecType {
-  const basename = filename.split(/[\\/]/).pop() || filename;
-  const match = basename.match(/^\d{4}-\d{2}-\d{2}__(\w+)__/);
-  if (!match) {
-    throw new SpecTypeError(
-      `(no type prefix in filename "${basename}")`,
-      KNOWN_TYPES,
-    );
-  }
-  const raw = match[1].toLowerCase();
-  if (raw === "feature") return "feat";
-  if ((KNOWN_TYPES as readonly string[]).includes(raw)) {
-    return raw as SpecType;
-  }
-  throw new SpecTypeError(raw, KNOWN_TYPES);
-}
-
 // ─── gate extraction ──────────────────────────────────────────────────────
 
 function extractGates(markdown: string): string[] {
@@ -861,7 +829,10 @@ function extractGates(markdown: string): string[] {
 // ─── entry point ──────────────────────────────────────────────────────────
 
 export function scoreSpec(markdown: string, filename: string = ""): ScoreResult {
-  const specType = detectSpecType(filename);
+  const { type: specType, source: typeSource } = detectSpecTypeWithFallback(
+    filename,
+    markdown,
+  );
   const defs = SECTIONS_BY_TYPE[specType];
 
   const sections: Record<string, SectionStatus> = {};
@@ -895,5 +866,6 @@ export function scoreSpec(markdown: string, filename: string = ""): ScoreResult 
     section_order,
     section_labels,
     gates,
+    type_source: typeSource,
   };
 }

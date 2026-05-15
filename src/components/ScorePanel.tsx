@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { type ScoreResult, type SectionStatus } from "../lib/scoreSpec";
+import {
+  type ScoreResult,
+  type SectionStatus,
+  type DetectionSource,
+} from "../lib/scoreSpec";
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
 
@@ -29,6 +33,12 @@ function statusLabel(status: SectionStatus): string {
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function provenanceLabel(source: DetectionSource): string | null {
+  if (source === "filename") return null;
+  if (source === "h1") return "inferred from H1";
+  return "inferred from frontmatter";
 }
 
 export default function ScorePanel({
@@ -108,6 +118,7 @@ export default function ScorePanel({
       };
 
   const typeLabel = result.spec_type.toUpperCase();
+  const provenance = provenanceLabel(result.type_source);
 
   return (
     <div
@@ -135,6 +146,22 @@ export default function ScorePanel({
             >
               {typeLabel}
             </span>
+            {provenance && (
+              <span
+                className="px-2 py-0.5 rounded-full text-[10px]"
+                style={{
+                  fontFamily: "var(--font-mono-zai)",
+                  color: "var(--zai-amber)",
+                  border: "1px solid var(--zai-amber)",
+                  letterSpacing: "0.05em",
+                  textTransform: "none",
+                }}
+                data-testid="spec-type-provenance"
+                title="Spec type was inferred from the document body because the filename does not follow the canonical YYYY-MM-DD__<type>__ prefix."
+              >
+                {provenance}
+              </span>
+            )}
           </div>
           <div
             className="mt-1 text-6xl sm:text-7xl"
