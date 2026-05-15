@@ -4,7 +4,14 @@ import ScorePanel from "../components/ScorePanel";
 import ScoreExample from "../components/ScoreExample";
 import PipelineSteps from "../components/PipelineSteps";
 import ErrorBanner from "../components/ErrorBanner";
-import { scoreSpec, type ScoreResult } from "../lib/scoreSpec";
+import TypeSelector from "../components/TypeSelector";
+import {
+  scoreSpec,
+  scoreSpecWithType,
+  SpecTypeError,
+  type ScoreResult,
+  type SpecType,
+} from "../lib/scoreSpec";
 import { renderScoredSpec } from "../lib/renderScoredSpec";
 import { SPEC_TEMPLATE } from "../lib/specTemplate";
 
@@ -43,50 +50,96 @@ export default function AppPage() {
     kind: "preupload",
   });
   const [uploadError, setUploadError] = useState<string | null>(null);
+  // Track whether the upload error was specifically the detector's
+  // "unresolvable spec type" case. The TypeSelector renders only when
+  // this is true; other errors (file read failure, future cases) show
+  // the bare ErrorBanner because picking a type would not help them.
+  const [unresolvableTypeError, setUnresolvableTypeError] = useState(false);
 
-  const handleFile = useCallback(async (name: string, contents: string) => {
-    setUploadState({ kind: "loading", filename: name });
-    setUploadError(null);
-    // Yield once so the loading state is observable; scoring itself is
-    // synchronous CPU work, but the UI contract requires preupload →
-    // loading → loaded|error with no skipped transitions.
-    await Promise.resolve();
-    try {
-      const scored = scoreSpec(contents, name);
-      setFilename(name);
-      setMarkdown(contents);
-      setResult(scored);
-      setUploadState({ kind: "loaded", filename: name });
-      setImplState("idle");
-      setIssueNumber(null);
-      setErrorMsg("");
-
-      const events = scored.section_order.map((key) => ({
-        section: key,
-        status: scored.sections[key],
-        reason: scored.section_reasons[key],
-        spec_type: scored.spec_type,
+  const postScoreTelemetry = useCallback((scored: ScoreResult) => {
+    const events = scored.section_order.map((key) => ({
+      section: key,
+      status: scored.sections[key],
+      reason: scored.section_reasons[key],
+      spec_type: scored.spec_type,
+      rubric_version: scored.rubric_version,
+    }));
+    fetch("/api/score", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         rubric_version: scored.rubric_version,
-      }));
-      fetch("/api/score", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rubric_version: scored.rubric_version,
-          spec_type: scored.spec_type,
-          events,
-        }),
-      }).catch(() => {});
-    } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to score spec.";
-      setFilename(null);
-      setMarkdown(null);
-      setResult(null);
-      setUploadState({ kind: "error" });
-      setUploadError(message);
-    }
+        spec_type: scored.spec_type,
+        events,
+      }),
+    }).catch(() => {});
   }, []);
+
+  const handleFile = useCallback(
+    async (name: string, contents: string) => {
+      setUploadState({ kind: "loading", filename: name });
+      setUploadError(null);
+      setUnresolvableTypeError(false);
+      // Yield once so the loading state is observable; scoring itself is
+      // synchronous CPU work, but the UI contract requires preupload →
+      // loading → loaded|error with no skipped transitions.
+      await Promise.resolve();
+      try {
+        const scored = scoreSpec(contents, name);
+        setFilename(name);
+        setMarkdown(contents);
+        setResult(scored);
+        setUploadState({ kind: "loaded", filename: name });
+        setImplState("idle");
+        setIssueNumber(null);
+        setErrorMsg("");
+        postScoreTelemetry(scored);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to score spec.";
+        // Keep filename + markdown around so the TypeSelector path can
+        // re-score the same upload without forcing a re-attach. Result
+        // stays null so the right panel renders ErrorBanner instead of
+        // ScorePanel.
+        setFilename(name);
+        setMarkdown(contents);
+        setResult(null);
+        setUploadState({ kind: "error" });
+        setUploadError(message);
+        setUnresolvableTypeError(err instanceof SpecTypeError);
+      }
+    },
+    [postScoreTelemetry],
+  );
+
+  const handleTypeSelect = useCallback(
+    async (manualType: SpecType) => {
+      if (!filename || !markdown) return;
+      setUploadState({ kind: "loading", filename });
+      // Yield so the loading transition is observable (same reason as
+      // handleFile: the contract forbids skipping `loading`).
+      await Promise.resolve();
+      try {
+        const scored = scoreSpecWithType(markdown, manualType);
+        setResult(scored);
+        setUploadState({ kind: "loaded", filename });
+        setUploadError(null);
+        setUnresolvableTypeError(false);
+        setImplState("idle");
+        setIssueNumber(null);
+        setErrorMsg("");
+        postScoreTelemetry(scored);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to score spec.";
+        setResult(null);
+        setUploadState({ kind: "error" });
+        setUploadError(message);
+        setUnresolvableTypeError(false);
+      }
+    },
+    [filename, markdown, postScoreTelemetry],
+  );
 
   const handleDownloadTemplate = useCallback(() => {
     downloadBlob("spec-template.md", SPEC_TEMPLATE);
@@ -210,7 +263,15 @@ export default function AppPage() {
               targetRepo={targetRepo}
             />
           ) : uploadError ? (
-            <ErrorBanner message={uploadError} />
+            <div>
+              <ErrorBanner message={uploadError} />
+              {unresolvableTypeError && (
+                <TypeSelector
+                  onSelect={handleTypeSelect}
+                  disabled={uploadState.kind === "loading"}
+                />
+              )}
+            </div>
           ) : (
             <div
               className="rounded-xl border border-dashed border-[var(--zai-border)] bg-[var(--zai-card)]/40 p-8 flex items-center justify-center text-sm text-[var(--zai-muted)]"

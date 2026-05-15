@@ -4,7 +4,9 @@ import {
   SpecTypeError,
   detectSpecType,
   detectSpecTypeWithFallback,
+  resolveManual,
 } from "./specTypeDetector";
+import { scoreSpecWithType } from "./scoreSpec";
 
 // Fixture content covering the three resolution paths plus the
 // unresolvable case. These mirror the test fixtures called out in
@@ -160,5 +162,33 @@ describe("detectSpecTypeWithFallback", () => {
     const md = `---\nspec_type: chore\n---\n\n# BUG: H1 says bug\n`;
     const r = detectSpecTypeWithFallback("x.md", md);
     expect(r).toEqual({ type: "bug", source: "h1" });
+  });
+});
+
+describe("resolveManual + scoreSpecWithType", () => {
+  it("resolveManual returns { type, source: 'manual' }", () => {
+    expect(resolveManual("feat")).toEqual({ type: "feat", source: "manual" });
+    expect(resolveManual("bug")).toEqual({ type: "bug", source: "manual" });
+  });
+
+  it("scoreSpecWithType bypasses the detector and records source 'manual'", () => {
+    // Markdown deliberately starts with prose that the H1 / frontmatter
+    // detectors would not match. If scoreSpecWithType were going through
+    // the auto-detect chain it would throw SpecTypeError; instead it
+    // honours the caller's chosen type.
+    const md =
+      "Random first line that is not an H1 with a type token.\n\n" +
+      "## Intent\nSome intent prose.\n";
+    const r = scoreSpecWithType(md, "chore");
+    expect(r.spec_type).toBe("chore");
+    expect(r.type_source).toBe("manual");
+  });
+
+  it("scoreSpecWithType honours the manually picked type even when filename and body would resolve differently", () => {
+    const md = "# FEAT: body says feat\n\n## Intent\nprose\n";
+    // Detector would say `feat`; caller asserts `bug`. Caller wins.
+    const r = scoreSpecWithType(md, "bug");
+    expect(r.spec_type).toBe("bug");
+    expect(r.type_source).toBe("manual");
   });
 });
