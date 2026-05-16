@@ -1,4 +1,5 @@
 import {
+  CANONICAL_USER_TYPES,
   KNOWN_TYPES,
   SpecTypeError,
   detectSpecType,
@@ -12,6 +13,7 @@ import {
 export type SectionStatus = "PASS" | "FAIL" | "SKIP";
 
 export {
+  CANONICAL_USER_TYPES,
   KNOWN_TYPES,
   SpecTypeError,
   detectSpecType,

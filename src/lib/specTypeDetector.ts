@@ -37,6 +37,10 @@ export function resolveManual(type: SpecType): DetectionResult {
   return { type, source: "manual" };
 }
 
+// Full validation set. Every type the rubric scores against. Used for
+// filename token validation; a canonical `2026-04-13__hotfix__urgent.md`
+// keeps scoring through HOTFIX_SECTIONS even though `hotfix` is not in
+// the canonical author-facing vocabulary surfaced in UI strings.
 export const KNOWN_TYPES: readonly SpecType[] = [
   "feat",
   "bug",
@@ -48,6 +52,24 @@ export const KNOWN_TYPES: readonly SpecType[] = [
   "ux",
   "brand",
   "epic",
+];
+
+// Canonical author-facing vocabulary per ZAI methodology and rubric
+// v1.5.0. The seven types authors create day-to-day; what the
+// TypeSelector exposes and what user-visible error messages list as
+// suggested types. Diverges from KNOWN_TYPES on purpose: `hotfix` and
+// `research` are still scored (so existing canonical files keep
+// working) but no longer surfaced to users because the methodology has
+// folded them into one of the seven; `epic` is reserved for cross-phase
+// tracking issues and is not a day-to-day author choice.
+export const CANONICAL_USER_TYPES: readonly SpecType[] = [
+  "feat",
+  "bug",
+  "spec",
+  "chore",
+  "refactor",
+  "ux",
+  "brand",
 ];
 
 export class SpecTypeError extends Error {
@@ -81,11 +103,12 @@ export function detectSpecType(filename: string): SpecType {
   if (!match) {
     throw new SpecTypeError(
       `(no type prefix in filename "${basename}")`,
-      KNOWN_TYPES,
+      CANONICAL_USER_TYPES,
     );
   }
   const normalised = normaliseRaw(match[1]);
-  if (!normalised) throw new SpecTypeError(match[1].toLowerCase(), KNOWN_TYPES);
+  if (!normalised)
+    throw new SpecTypeError(match[1].toLowerCase(), CANONICAL_USER_TYPES);
   return normalised;
 }
 
@@ -136,7 +159,7 @@ const UNRESOLVABLE_MESSAGE =
   "Could not infer spec type from filename, H1, or frontmatter. " +
   "Rename the file with a YYYY-MM-DD__<type>__ prefix, add an H1 like " +
   "`# FEAT: …`, or set `spec_type: <type>` in YAML frontmatter. " +
-  `Known types: ${KNOWN_TYPES.join(", ")}.`;
+  `Known types: ${CANONICAL_USER_TYPES.join(", ")}.`;
 
 // Full detector with H1 + frontmatter fallbacks. Always returns the source
 // that resolved the type so the UI can label provenance ("inferred from H1").
