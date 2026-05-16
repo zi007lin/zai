@@ -14,6 +14,7 @@ import {
 } from "../lib/scoreSpec";
 import { renderScoredSpec } from "../lib/renderScoredSpec";
 import { SPEC_TEMPLATE } from "../lib/specTemplate";
+import { parseRepoHeader } from "../lib/parseRepoHeader";
 
 function downloadBlob(filename: string, contents: string) {
   const blob = new Blob([contents], { type: "text/markdown;charset=utf-8" });
@@ -28,16 +29,6 @@ function downloadBlob(filename: string, contents: string) {
 }
 
 type ImplState = "idle" | "dispatching" | "queued" | "error";
-
-// Non-greedy `.*?` skips any formatting (backticks, whitespace) between the
-// **Repo:** marker and the owner/repo token. Owner/repo character class
-// matches GitHub's allowed chars; first match on the header line wins.
-const REPO_HEADER_REGEX = /\*\*Repo:\*\*.*?([A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+)/;
-
-function parseTargetRepo(markdown: string): string | null {
-  const match = markdown.match(REPO_HEADER_REGEX);
-  return match ? match[1] : null;
-}
 
 export default function AppPage() {
   const [filename, setFilename] = useState<string | null>(null);
@@ -152,20 +143,20 @@ export default function AppPage() {
     downloadBlob(scoredName, out);
   }, [filename, markdown, result]);
 
-  // Re-parse on every click from the currently-loaded markdown — never
+  // Re-parse on every render from the currently-loaded markdown — never
   // retain a target_repo value across spec loads. See bug #67.
   const targetRepo = useMemo(
-    () => (markdown ? parseTargetRepo(markdown) : null),
+    () => (markdown ? parseRepoHeader(markdown) : null),
     [markdown]
   );
 
+  // The "Run impl" button is gated on `targetRepo` in ScorePanel, so this
+  // handler is unreachable when the header is missing. Missing-header UX
+  // lives entirely in the disabled-state hint — runtime error channel is
+  // reserved for genuine dispatch failures (network, auth, rate-limit).
+  // See BUG #97.
   const handleRunImpl = useCallback(async () => {
-    if (!filename || !markdown || !result || !result.passed) return;
-    if (!targetRepo) {
-      setImplState("error");
-      setErrorMsg("Cannot dispatch: spec is missing **Repo:** header");
-      return;
-    }
+    if (!filename || !markdown || !result || !result.passed || !targetRepo) return;
     setImplState("dispatching");
     setErrorMsg("");
     try {

@@ -338,6 +338,15 @@ export default function ScorePanel({
             implState === "dispatching" ||
             implState === "queued"
           }
+          aria-disabled={
+            !result.passed ||
+            !targetRepo ||
+            implState === "dispatching" ||
+            implState === "queued"
+          }
+          aria-describedby={
+            result.passed && !targetRepo ? "run-impl-disabled-hint" : undefined
+          }
           className="flex-1 px-4 py-2.5 rounded-md bg-[var(--zai-teal)] text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ fontFamily: "var(--font-sans-zai)" }}
           data-testid="run-impl-button"
@@ -349,12 +358,14 @@ export default function ScorePanel({
       </div>
 
       {result.passed && !targetRepo && (
-        <div
-          className="mt-3 text-sm text-[#E15B5B]"
+        <p
+          id="run-impl-disabled-hint"
+          role="note"
+          className="mt-3 text-sm text-[var(--zai-muted)]"
           data-testid="run-impl-missing-repo"
         >
-          ❌ Cannot dispatch: spec is missing <code>**Repo:**</code> header
-        </div>
+          Add <code>**Repo:** owner/repo</code> to your spec body to enable dispatch.
+        </p>
       )}
 
       {implState === "queued" && issueNumber !== null && targetRepo && (
