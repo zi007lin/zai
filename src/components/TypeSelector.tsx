@@ -1,24 +1,19 @@
 import { useCallback, useRef, useState } from "react";
-import type { SpecType } from "../lib/scoreSpec";
+import { CANONICAL_USER_TYPES, type SpecType } from "../lib/scoreSpec";
 
 interface TypeOption {
   id: SpecType;
   label: string;
 }
 
-// Methodology canonical order per Decision D7. Matches every internal
-// doc and the rubric registry; reinforces vocabulary. `hotfix`, `research`,
-// and `epic` are excluded by design — the dropdown surface stays to the
-// seven primary types authors create day-to-day.
-const TYPES: readonly TypeOption[] = [
-  { id: "feat", label: "FEAT" },
-  { id: "bug", label: "BUG" },
-  { id: "spec", label: "SPEC" },
-  { id: "chore", label: "CHORE" },
-  { id: "refactor", label: "REFACTOR" },
-  { id: "ux", label: "UX" },
-  { id: "brand", label: "BRAND" },
-];
+// One source of truth for the seven canonical author-facing types lives
+// in `specTypeDetector.ts` (`CANONICAL_USER_TYPES`). The button row
+// derives both label text and click order from it; methodology canonical
+// order is enforced by the array's declared order over there.
+const TYPES: readonly TypeOption[] = CANONICAL_USER_TYPES.map((id) => ({
+  id,
+  label: id.toUpperCase(),
+}));
 
 export const TYPE_SELECTOR_TYPES = TYPES;
 

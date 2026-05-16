@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  CANONICAL_USER_TYPES,
   KNOWN_TYPES,
   SpecTypeError,
   detectSpecType,
@@ -144,9 +145,16 @@ describe("detectSpecTypeWithFallback", () => {
     expect(caught).toBeInstanceOf(SpecTypeError);
     expect(caught!.message).toMatch(/Could not infer spec type/);
     expect(caught!.message).toMatch(/filename, H1, or frontmatter/);
-    for (const t of KNOWN_TYPES) {
+    // The user-facing message lists only the canonical seven, not the
+    // full validation set. `hotfix` and `research` still score when their
+    // canonical filenames are uploaded but should not be suggested as
+    // valid types in error copy; `epic` is reserved for tracking issues.
+    for (const t of CANONICAL_USER_TYPES) {
       expect(caught!.message).toContain(t);
     }
+    expect(caught!.message).not.toMatch(/\bhotfix\b/);
+    expect(caught!.message).not.toMatch(/\bresearch\b/);
+    expect(caught!.message).not.toMatch(/\bepic\b/);
   });
 
   it("filename hit short-circuits H1 — even if both would resolve", () => {
@@ -162,6 +170,63 @@ describe("detectSpecTypeWithFallback", () => {
     const md = `---\nspec_type: chore\n---\n\n# BUG: H1 says bug\n`;
     const r = detectSpecTypeWithFallback("x.md", md);
     expect(r).toEqual({ type: "bug", source: "h1" });
+  });
+});
+
+describe("CANONICAL_USER_TYPES vocabulary", () => {
+  it("is exactly the canonical seven, in methodology order", () => {
+    expect(CANONICAL_USER_TYPES).toEqual([
+      "feat",
+      "bug",
+      "spec",
+      "chore",
+      "refactor",
+      "ux",
+      "brand",
+    ]);
+  });
+
+  it("does not include hotfix, research, or epic (the rubric-scored-but-not-author-facing types)", () => {
+    expect(CANONICAL_USER_TYPES).not.toContain("hotfix");
+    expect(CANONICAL_USER_TYPES).not.toContain("research");
+    expect(CANONICAL_USER_TYPES).not.toContain("epic");
+  });
+
+  it("is a subset of KNOWN_TYPES (so every author-facing type still scores)", () => {
+    for (const t of CANONICAL_USER_TYPES) {
+      expect(KNOWN_TYPES).toContain(t);
+    }
+  });
+
+  it("SpecTypeError 'Known:' line lists only the canonical seven", () => {
+    const err = new SpecTypeError("wat", CANONICAL_USER_TYPES);
+    expect(err.message).toMatch(
+      /Known: feat, bug, spec, chore, refactor, ux, brand\./,
+    );
+    expect(err.message).not.toMatch(/\bhotfix\b/);
+    expect(err.message).not.toMatch(/\bresearch\b/);
+    expect(err.message).not.toMatch(/\bepic\b/);
+  });
+
+  it("detectSpecType throws with the canonical seven in the Known list, not the full validation set", () => {
+    let caught: SpecTypeError | null = null;
+    try {
+      detectSpecType("2026-04-13__wat__x.md");
+    } catch (err) {
+      caught = err as SpecTypeError;
+    }
+    expect(caught).toBeInstanceOf(SpecTypeError);
+    expect(caught!.message).not.toMatch(/\bhotfix\b/);
+    expect(caught!.message).not.toMatch(/\bresearch\b/);
+    expect(caught!.message).not.toMatch(/\bepic\b/);
+  });
+
+  it("hotfix and research canonical filenames continue to score (validation set is untouched)", () => {
+    // Sanity: KNOWN_TYPES still includes them so validation accepts them.
+    expect(KNOWN_TYPES).toContain("hotfix");
+    expect(KNOWN_TYPES).toContain("research");
+    expect(detectSpecType("2026-04-13__hotfix__urgent.md")).toBe("hotfix");
+    expect(detectSpecType("2026-04-13__research__topic.md")).toBe("research");
   });
 });
 
