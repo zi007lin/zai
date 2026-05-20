@@ -14,3 +14,8 @@ playwright-report
 .playwright
 env/
 registrar-audit.log
+
+# Commit the implw slash command for self-hosted runners (htu-foundation#168)
+!.claude/commands/
+.claude/commands/*
+!.claude/commands/implw.md
