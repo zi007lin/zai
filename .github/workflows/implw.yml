@@ -88,7 +88,12 @@ jobs:
           export PATH="$HOME/.npm-global/bin:$PATH"
           command -v claude >/dev/null || { echo "::error::claude not found on PATH"; exit 127; }
           set +e
-          timeout 10m claude -p "/implw ${{ steps.fetch_issue.outputs.spec_path }}" < /dev/null
+          # --dangerously-skip-permissions is required for headless `claude -p` in CI:
+          # project-committed `defaultMode: bypassPermissions` is not honored for
+          # `claude -p` (a repo cannot self-grant bypass), so without the flag the
+          # agent runs in ask-mode, blocks on the first gated tool, and times out
+          # (stdin is /dev/null). Spec: issues/2026-05-27__bug__ci-implw-skip-permissions-flag.scored.md.
+          timeout 10m claude --dangerously-skip-permissions -p "/implw ${{ steps.fetch_issue.outputs.spec_path }}" < /dev/null
           CLAUDE_EXIT=$?
           set -e
           echo "claude_exit=$CLAUDE_EXIT" >> "$GITHUB_OUTPUT"
