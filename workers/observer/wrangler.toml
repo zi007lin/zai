@@ -1,0 +1,23 @@
+name = "zilin-observer"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Cron ingestion (every 5 minutes per zilin-observer-architecture.md §3) is
+# deferred — this scaffold (FEAT zi007lin/zai#117) ships the readiness
+# surface and baseline schema only, not the ingestion pipeline. A future
+# FEAT wires the [triggers] block and the scheduled() handler together.
+
+[vars]
+APP_ENV = "dev"
+HTU_ENV = "dev"
+
+# Placeholder binding — no live database is provisioned by this scaffold
+# (D7: no automatic deployment). `database_id` must be filled in with a
+# real Cloudflare D1 database id via `wrangler d1 create zilin_observer`
+# before this Worker is deployed to any environment.
+[[d1_databases]]
+binding = "DB"
+database_name = "zilin_observer"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+migrations_dir = "migrations"
