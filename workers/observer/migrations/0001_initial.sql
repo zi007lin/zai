@@ -5,11 +5,9 @@
 -- migration MUST stay byte-for-byte identical to its DDL.
 --
 -- Scope note (FEAT zi007lin/zai#117, decision D4): the `approval_contexts`
--- table and its two indexes are part of the canonical schema (v1.2 addition,
--- FEAT #308) but are intentionally NOT included in this migration. That
--- DDL parity adjustment is owned by the separate CHORE zi007lin/zai#116,
--- which appends it once this baseline exists. Do not add approval_contexts
--- here — it would silently absorb #116's scope.
+-- table and its two indexes (v1.2 addition, FEAT #308) were appended by
+-- the separate CHORE zi007lin/zai#116 once this baseline existed — see
+-- the DDL block below.
 
 -- Every ingested structured record (CLARIFY_JSON, CLARIFY_RESPONSE_JSON,
 -- HALT_JSON, RUN_DIGEST, APPROVAL_CONTEXT_JSON) lands in `records` first.
@@ -138,3 +136,33 @@ CREATE TABLE customer_tier_registrations (
 );
 
 CREATE INDEX idx_customer_tier ON customer_tier_registrations(tier, status);
+
+-- ───────────────────────────────────────────────────────────────────
+-- v1.2 addition per FEAT #308 (EPIC #277 Phase 4): APPROVAL_CONTEXT_JSON
+-- ingestion. Mirrors the halts/clarify_cycles denormalized-projection
+-- pattern. Lands alongside the v1 schema in migration 0001_initial.sql;
+-- not a separate migration file. The zi007lin/zai Worker migration-file
+-- parity update is tracked as a separate cross-repo companion issue
+-- (D5 in FEAT #308) and is not landed in this PR.
+-- ───────────────────────────────────────────────────────────────────
+
+CREATE TABLE approval_contexts (
+  context_id TEXT PRIMARY KEY REFERENCES records(id),
+  action TEXT NOT NULL,
+  target_repo TEXT NOT NULL,
+  target_number INTEGER NOT NULL,
+  requester_identity TEXT NOT NULL,
+  requester_github_user TEXT,
+  approver_identity TEXT NOT NULL,
+  approver_logto_roles_json TEXT,
+  requested_at TEXT NOT NULL,
+  minted_at TEXT,
+  expires_at TEXT,
+  used_at TEXT,
+  result TEXT NOT NULL,
+  idempotency_key TEXT,
+  correlation_id TEXT
+);
+
+CREATE INDEX idx_approval_contexts_target ON approval_contexts(target_repo, target_number);
+CREATE INDEX idx_approval_contexts_result ON approval_contexts(result);

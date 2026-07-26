@@ -60,12 +60,32 @@ describe("0001_initial.sql — clean-database migration", () => {
         "ingest_cursor",
         "schema_violations",
         "customer_tier_registrations",
+        "approval_contexts",
       ])
     );
   });
 
-  it("does NOT create approval_contexts (owned by zai#116, not this FEAT)", () => {
-    expect(tableNames()).not.toContain("approval_contexts");
+  it("approval_contexts has the v1.2 columns (zai#116)", () => {
+    const columns = columnNames("approval_contexts");
+    expect(columns).toEqual(
+      expect.arrayContaining([
+        "context_id",
+        "action",
+        "target_repo",
+        "target_number",
+        "requester_identity",
+        "requester_github_user",
+        "approver_identity",
+        "approver_logto_roles_json",
+        "requested_at",
+        "minted_at",
+        "expires_at",
+        "used_at",
+        "result",
+        "idempotency_key",
+        "correlation_id",
+      ])
+    );
   });
 
   it("creates the critical indexes", () => {
@@ -76,6 +96,8 @@ describe("0001_initial.sql — clean-database migration", () => {
         "idx_records_type_time",
         "idx_records_lineage",
         "idx_customer_tier",
+        "idx_approval_contexts_target",
+        "idx_approval_contexts_result",
       ])
     );
   });
