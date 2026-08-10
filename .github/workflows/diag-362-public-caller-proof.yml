@@ -1,0 +1,17 @@
+name: Diag 362 Public Caller Proof (temporary)
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  validate:
+    uses: zi007lin/htu-pr-validation/.github/workflows/pr-validation.yml@htu/bootstrap-sha-pin-proof-test
+    with:
+      test_command: "npm test"
+      typecheck_command: "npx tsc --noEmit"
+      blocking: false
+    secrets: inherit
