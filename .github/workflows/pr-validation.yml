@@ -1,23 +1,27 @@
-# .github/workflows/pr-validation.yml — thin caller to htu-foundation's
-# canonical PR-validation contract (CHORE htu-foundation#351, adopted here
-# under CHORE #120). No validator logic is copied into this repo — see
-# https://github.com/zi007lin/htu-foundation/blob/main/.github/workflows/pr-validation.yml
-# for the single source of truth.
+# .github/workflows/pr-validation.yml — thin caller to the canonical
+# PR-validation contract, hosted at zi007lin/htu-pr-validation
+# (extracted from htu-foundation under FEAT htu-foundation#362).
 #
-# Pinned to the third stable release tag:
-# https://github.com/zi007lin/htu-foundation/releases/tag/pr-validation-contract-v0.3.0
+# Pinned to the fourth stable release tag, the contract's first release
+# from its new public home:
+# https://github.com/zi007lin/htu-pr-validation/releases/tag/pr-validation-contract-v0.4.0
 #
 # v0.2.0 (BUG htu-foundation#353) fixed a cross-repo workflow_call
 # resolution defect and requires each caller to declare its own explicit
-# permissions: block (below) — applied here even though this repo's own
-# self-triggered check is separately, structurally blocked (see NOTE
-# below), so this file stays correct the moment that separate block is
-# lifted, with no further edit needed here.
+# permissions: block (below) — unchanged in v0.4.0.
 #
 # v0.3.0 (BUG htu-foundation#359) fixed a dependency-install defect
-# exposed by zzv-skills' own version-bump PR (the first real PR to ever
-# reach the Typecheck/Run tests steps) — no caller-side change required
-# for that fix beyond the pinned ref bump.
+# exposed by zzv-skills' own version-bump PR — no caller-side change
+# required for that fix beyond the pinned ref bump.
+#
+# v0.4.0 (FEAT htu-foundation#362) resolves the structural block this
+# repo previously carried: htu-foundation stayed private, and GitHub's
+# platform rule ("public caller repositories can only access reusable
+# workflows from public repositories") meant this repo — public — could
+# never invoke it, no matter which tag was pinned or how access was
+# configured. The contract now lives at zi007lin/htu-pr-validation, a
+# repo that is itself public, so this repo's self-triggered check should
+# now actually run for the first time.
 #
 # Observe-only (blocking: false) until an explicit later decision, after an
 # observe-only bake period with real PR traffic, flips it to blocking.
@@ -26,17 +30,6 @@
 # `npm run lint` — this repo's own `lint` script is actually a `tsc
 # --noEmit` invocation (misleadingly named), and the direct command avoids
 # labeling a type check as "lint" in the validation summary.
-#
-# NOTE: htu-foundation is a private repo. GitHub's platform rule ("public
-# caller repositories can only access reusable workflows from public
-# repositories") means this repo — public — cannot invoke a private
-# htu-foundation reusable workflow at all, regardless of any access-level
-# grant or which tag is pinned here. This is a known, permanent limitation
-# until htu-foundation's contract is extracted to a public repo (named
-# follow-up, not yet filed) — not something either v0.2.0 or v0.3.0
-# changes. Non-blocking either way (blocking: false). See CHORE zai#120
-# and htu-foundation#353 for the platform-issue trail already documented
-# there.
 
 name: PR Validation
 on:
@@ -49,7 +42,7 @@ permissions:
 
 jobs:
   validate:
-    uses: zi007lin/htu-foundation/.github/workflows/pr-validation.yml@pr-validation-contract-v0.3.0
+    uses: zi007lin/htu-pr-validation/.github/workflows/pr-validation.yml@pr-validation-contract-v0.4.0
     with:
       test_command: "npm test"
       typecheck_command: "npx tsc --noEmit"
