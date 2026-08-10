@@ -4,8 +4,20 @@
 # https://github.com/zi007lin/htu-foundation/blob/main/.github/workflows/pr-validation.yml
 # for the single source of truth.
 #
-# Pinned to the first stable release tag:
-# https://github.com/zi007lin/htu-foundation/releases/tag/pr-validation-contract-v0.1.0
+# Pinned to the third stable release tag:
+# https://github.com/zi007lin/htu-foundation/releases/tag/pr-validation-contract-v0.3.0
+#
+# v0.2.0 (BUG htu-foundation#353) fixed a cross-repo workflow_call
+# resolution defect and requires each caller to declare its own explicit
+# permissions: block (below) — applied here even though this repo's own
+# self-triggered check is separately, structurally blocked (see NOTE
+# below), so this file stays correct the moment that separate block is
+# lifted, with no further edit needed here.
+#
+# v0.3.0 (BUG htu-foundation#359) fixed a dependency-install defect
+# exposed by zzv-skills' own version-bump PR (the first real PR to ever
+# reach the Typecheck/Run tests steps) — no caller-side change required
+# for that fix beyond the pinned ref bump.
 #
 # Observe-only (blocking: false) until an explicit later decision, after an
 # observe-only bake period with real PR traffic, flips it to blocking.
@@ -14,15 +26,30 @@
 # `npm run lint` — this repo's own `lint` script is actually a `tsc
 # --noEmit` invocation (misleadingly named), and the direct command avoids
 # labeling a type check as "lint" in the validation summary.
+#
+# NOTE: htu-foundation is a private repo. GitHub's platform rule ("public
+# caller repositories can only access reusable workflows from public
+# repositories") means this repo — public — cannot invoke a private
+# htu-foundation reusable workflow at all, regardless of any access-level
+# grant or which tag is pinned here. This is a known, permanent limitation
+# until htu-foundation's contract is extracted to a public repo (named
+# follow-up, not yet filed) — not something either v0.2.0 or v0.3.0
+# changes. Non-blocking either way (blocking: false). See CHORE zai#120
+# and htu-foundation#353 for the platform-issue trail already documented
+# there.
 
 name: PR Validation
 on:
   pull_request:
     types: [opened, synchronize, reopened, edited]
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   validate:
-    uses: zi007lin/htu-foundation/.github/workflows/pr-validation.yml@pr-validation-contract-v0.1.0
+    uses: zi007lin/htu-foundation/.github/workflows/pr-validation.yml@pr-validation-contract-v0.3.0
     with:
       test_command: "npm test"
       typecheck_command: "npx tsc --noEmit"
