@@ -1,0 +1,30 @@
+# .github/workflows/pr-validation.yml — thin caller to htu-foundation's
+# canonical PR-validation contract (CHORE htu-foundation#351, adopted here
+# under CHORE #120). No validator logic is copied into this repo — see
+# https://github.com/zi007lin/htu-foundation/blob/main/.github/workflows/pr-validation.yml
+# for the single source of truth.
+#
+# Pinned to the first stable release tag:
+# https://github.com/zi007lin/htu-foundation/releases/tag/pr-validation-contract-v0.1.0
+#
+# Observe-only (blocking: false) until an explicit later decision, after an
+# observe-only bake period with real PR traffic, flips it to blocking.
+#
+# typecheck_command uses `npx tsc --noEmit` directly rather than
+# `npm run lint` — this repo's own `lint` script is actually a `tsc
+# --noEmit` invocation (misleadingly named), and the direct command avoids
+# labeling a type check as "lint" in the validation summary.
+
+name: PR Validation
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate:
+    uses: zi007lin/htu-foundation/.github/workflows/pr-validation.yml@pr-validation-contract-v0.1.0
+    with:
+      test_command: "npm test"
+      typecheck_command: "npx tsc --noEmit"
+      blocking: false
+    secrets: inherit
