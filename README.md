@@ -34,7 +34,7 @@ Each stage has a command: `spec`, `eval`, `impl`, `review`, `deploy`, `autopilot
 
 ## Try the scorer
 
-The first piece of the SDD pipeline is live as a web scorer at **[demo.zai.htu.io/app](https://demo.zai.htu.io/app)**. Drop any `.md` spec file into the upload zone and you'll get a deterministic, type-aware score — `feat` 7/7, `research` 6/6, `bug` 5/5, `chore` 2/2, or `hotfix` 3/3 — with a per-section breakdown and any pre-deploy gates the spec declares. Pure structural analysis, no LLM judgment; human review still required.
+The first piece of the SDD pipeline is live as a web scorer at **[demo.zai.htu.io/app](https://demo.zai.htu.io/app)**. Drop any `.md` spec file into the upload zone and you'll get a deterministic, type-aware score — `feat` 7/7, `research` 6/6, `bug` 5/5, `chore` 5/5, or `hotfix` 3/3 — with a per-section breakdown and any pre-deploy gates the spec declares. Pure structural analysis, no LLM judgment; human review still required.
 
 ---
 
