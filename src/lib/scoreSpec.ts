@@ -42,7 +42,7 @@ export interface ScoreResult {
 // v1.5.0 (FEAT zzv-skills#27): adds EPIC as a first-class spec type —
 // 10 EPIC-specific checks for tracking issues that coordinate multi-
 // phase strategic work. Additive only; no existing spec type changes.
-const RUBRIC_VERSION = "1.5.0";
+export const RUBRIC_VERSION = "1.5.0";
 
 // Per-type Intent word caps. FEAT/BUG/UX/BRAND stay at 150 where compression
 // is a virtue; CHORE stays at 100; SPEC and REFACTOR rise to 250 because they
@@ -431,70 +431,95 @@ function checkRulesOrContent(md: string): CheckResult {
 //   - `### Assumptions` subsection: ≥1 bullet (- or *)
 //   - `### Actuals (filled post-execution)` subsection: markdown table
 //     with required column headers `Phase`, `Estimate`, `Actual`, `Delta`
+//
+// BUG #124: collects every unmet sub-requirement into one FAIL reason
+// instead of returning on the first miss. An author fixing one issue at a
+// time and resubmitting used to see a new failure message each round —
+// the full contract is disclosed up front so it can be fixed in one pass.
 function checkWorkEstimate(md: string): CheckResult {
   if (!headingPresent(md, WORK_ESTIMATE_HEADING))
     return fail('"## Work Estimate" heading not found');
   const body = sectionBody(md, WORK_ESTIMATE_HEADING);
+  const failures: string[] = [];
 
   // Active operator time
-  if (!headingPresent(body, ACTIVE_OPERATOR_HEADING))
-    return fail('missing "### Active operator time" subsection');
-  const activeBody = subsectionBody(body, ACTIVE_OPERATOR_HEADING);
-  if (!tablePresent(activeBody))
-    return fail('"### Active operator time" missing markdown table');
-  const activeHeader = tableHeaderLine(activeBody);
-  if (!activeHeader || !/Phase/i.test(activeHeader) || !/Estimate/i.test(activeHeader))
-    return fail(
-      '"### Active operator time" table missing required column headers (Phase, Estimate)',
-    );
-  if (!tableHasTotalRow(activeBody))
-    return fail('"### Active operator time" table missing Total row');
-  if (tableDataRowCount(activeBody) < 2)
-    return fail(
-      '"### Active operator time" table needs at least 1 phase row plus a Total row',
-    );
+  if (!headingPresent(body, ACTIVE_OPERATOR_HEADING)) {
+    failures.push('missing "### Active operator time" subsection');
+  } else {
+    const activeBody = subsectionBody(body, ACTIVE_OPERATOR_HEADING);
+    if (!tablePresent(activeBody)) {
+      failures.push('"### Active operator time" missing markdown table');
+    } else {
+      const activeHeader = tableHeaderLine(activeBody);
+      if (!activeHeader || !/Phase/i.test(activeHeader) || !/Estimate/i.test(activeHeader))
+        failures.push(
+          '"### Active operator time" table missing required column headers (Phase, Estimate)',
+        );
+      if (!tableHasTotalRow(activeBody))
+        failures.push('"### Active operator time" table missing Total row');
+      if (tableDataRowCount(activeBody) < 2)
+        failures.push(
+          '"### Active operator time" table needs at least 1 phase row plus a Total row',
+        );
+    }
+  }
 
   // Wall-clock time
-  if (!headingPresent(body, WALL_CLOCK_HEADING))
-    return fail('missing "### Wall-clock time" subsection');
-  const wallBody = subsectionBody(body, WALL_CLOCK_HEADING);
-  if (!tablePresent(wallBody))
-    return fail('"### Wall-clock time" missing markdown table');
-  const wallHeader = tableHeaderLine(wallBody);
-  if (!wallHeader || !/Wait\s+dependency/i.test(wallHeader) || !/Estimate/i.test(wallHeader))
-    return fail(
-      '"### Wall-clock time" table missing required column headers (Wait dependency, Estimate)',
-    );
-  if (!tableHasTotalRow(wallBody))
-    return fail('"### Wall-clock time" table missing Total row');
-  if (tableDataRowCount(wallBody) < 2)
-    return fail(
-      '"### Wall-clock time" table needs at least 1 wait-dependency row plus a Total row',
-    );
+  if (!headingPresent(body, WALL_CLOCK_HEADING)) {
+    failures.push('missing "### Wall-clock time" subsection');
+  } else {
+    const wallBody = subsectionBody(body, WALL_CLOCK_HEADING);
+    if (!tablePresent(wallBody)) {
+      failures.push('"### Wall-clock time" missing markdown table');
+    } else {
+      const wallHeader = tableHeaderLine(wallBody);
+      if (!wallHeader || !/Wait\s+dependency/i.test(wallHeader) || !/Estimate/i.test(wallHeader))
+        failures.push(
+          '"### Wall-clock time" table missing required column headers (Wait dependency, Estimate)',
+        );
+      if (!tableHasTotalRow(wallBody))
+        failures.push('"### Wall-clock time" table missing Total row');
+      if (tableDataRowCount(wallBody) < 2)
+        failures.push(
+          '"### Wall-clock time" table needs at least 1 wait-dependency row plus a Total row',
+        );
+    }
+  }
 
   // Assumptions
-  if (!headingPresent(body, ASSUMPTIONS_HEADING))
-    return fail('missing "### Assumptions" subsection');
-  const assumptionsBody = subsectionBody(body, ASSUMPTIONS_HEADING);
-  if (bulletListCount(assumptionsBody) < 1)
-    return fail('"### Assumptions" subsection has no bullets (- or *)');
+  if (!headingPresent(body, ASSUMPTIONS_HEADING)) {
+    failures.push('missing "### Assumptions" subsection');
+  } else {
+    const assumptionsBody = subsectionBody(body, ASSUMPTIONS_HEADING);
+    if (bulletListCount(assumptionsBody) < 1)
+      failures.push('"### Assumptions" subsection has no bullets (- or *)');
+  }
 
   // Actuals (filled post-execution)
-  if (!headingPresent(body, ACTUALS_HEADING))
-    return fail('missing "### Actuals (filled post-execution)" subsection');
-  const actualsBody = subsectionBody(body, ACTUALS_HEADING);
-  if (!tablePresent(actualsBody))
-    return fail('"### Actuals (filled post-execution)" missing markdown table');
-  const actualsHeader = tableHeaderLine(actualsBody);
-  if (!actualsHeader)
-    return fail('"### Actuals (filled post-execution)" table missing header row');
-  const required = ["Phase", "Estimate", "Actual", "Delta"];
-  const missing = required.filter((c) => !new RegExp(`\\b${c}\\b`, "i").test(actualsHeader));
-  if (missing.length > 0)
-    return fail(
-      `"### Actuals (filled post-execution)" table missing required column headers: ${missing.join(", ")}`,
-    );
+  if (!headingPresent(body, ACTUALS_HEADING)) {
+    failures.push('missing "### Actuals (filled post-execution)" subsection');
+  } else {
+    const actualsBody = subsectionBody(body, ACTUALS_HEADING);
+    if (!tablePresent(actualsBody)) {
+      failures.push('"### Actuals (filled post-execution)" missing markdown table');
+    } else {
+      const actualsHeader = tableHeaderLine(actualsBody);
+      if (!actualsHeader) {
+        failures.push('"### Actuals (filled post-execution)" table missing header row');
+      } else {
+        const required = ["Phase", "Estimate", "Actual", "Delta"];
+        const missing = required.filter(
+          (c) => !new RegExp(`\\b${c}\\b`, "i").test(actualsHeader),
+        );
+        if (missing.length > 0)
+          failures.push(
+            `"### Actuals (filled post-execution)" table missing required column headers: ${missing.join(", ")}`,
+          );
+      }
+    }
+  }
 
+  if (failures.length > 0) return fail(failures.join("; "));
   return pass();
 }
 

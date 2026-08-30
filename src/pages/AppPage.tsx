@@ -223,7 +223,7 @@ export default function AppPage() {
           style={{ fontSize: "1.0625rem", lineHeight: 1.7 }}
         >
           Upload a spec file to get a deterministic per-type rubric score
-          (5–9 structural checks depending on spec type). No LLM judgment —
+          (6–10 structural checks depending on spec type). No LLM judgment —
           pure structural analysis. Human review still required.
         </p>
       </section>
