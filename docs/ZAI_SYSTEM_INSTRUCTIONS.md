@@ -1,6 +1,6 @@
 # ZAI SYSTEM INSTRUCTIONS
 
-**Version:** 1.3.1 (2026-04-20)
+**Version:** 1.5.0 (2026-08-30)
 **ZAI:** the structural validation service running at `zai.htu.io/app`
 **Purpose:** authoritative spec for what ZAI validates, how it scores, and how humans interact with it
 **Canonical location:** `docs/ZAI_SYSTEM_INSTRUCTIONS.md` in `zi007lin/zai`
@@ -32,7 +32,33 @@ ZAI does NOT validate:
 
 Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count.
 
-### FEAT / FEATURE rubric (9 checks)
+### Work Estimate contract (required by every rubric below except EPIC)
+
+Added in rubric v1.4.0, unchanged and still live in v1.5.0. EPIC is the only
+type without this check — tracking issues coordinate multi-phase work rather
+than billing discrete operator time. Every other type's Work Estimate row in
+the tables below is checked against this exact, source-confirmed contract
+(`checkWorkEstimate` in `src/lib/scoreSpec.ts`):
+
+- `## Work Estimate` — H2 heading
+- `### Active operator time` — subsection with a markdown table containing
+  `Phase` and `Estimate` column headers, at least one phase data row, and a
+  `Total` row
+- `### Wall-clock time` — subsection with a markdown table containing
+  `Wait dependency` and `Estimate` column headers, at least one dependency
+  data row, and a `Total` row
+- `### Assumptions` — subsection with at least one `-` or `*` bullet
+- `### Actuals (filled post-execution)` — subsection with a markdown table
+  containing `Phase`, `Estimate`, `Actual`, and `Delta` column headers
+
+Column and subsection order is not enforced, extra columns are allowed, no
+estimate units are enforced, and the Actuals table has no minimum row count
+(unlike the two timing tables, which each require ≥1 data row plus the
+Total row). A failing `work_estimate` check reports every unmet
+sub-requirement it finds in one response, not just the first — fix
+everything the message lists and resubmit once.
+
+### FEAT / FEATURE rubric (10 checks)
 
 | # | Check | Pattern |
 |---|---|---|
@@ -45,12 +71,13 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 | 7 | Files created / updated | `## Files created / updated` H2 with fenced code block |
 | 8 | Models Applied | `## Models Applied` H2 declaring required models + structural evidence matches |
 | 9 | Legal triggers | `## Legal triggers` H2 present, declares "None" or lists specific triggers |
+| 10 | Work Estimate | See Work Estimate contract above |
 
 **Optional (scored separately, do not block pass):**
 - `## Draft-of-thoughts` — +1 "process quality" badge
 - Appendices — +1 "completeness" badge
 
-### BUG / HOTFIX rubric (7 checks)
+### BUG / HOTFIX rubric (8 checks)
 
 | # | Check | Pattern |
 |---|---|---|
@@ -61,8 +88,9 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 | 5 | Subject Migration Summary | Same as FEAT item 6 |
 | 6 | Files | `## Files` H2 with fenced code block |
 | 7 | Legal triggers | `## Legal triggers` H2 present |
+| 8 | Work Estimate | See Work Estimate contract above |
 
-### SPEC rubric (6 checks)
+### SPEC rubric (7 checks)
 
 | # | Check | Pattern |
 |---|---|---|
@@ -72,8 +100,9 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 | 4 | Subject Migration Summary | Standard |
 | 5 | Files / Schema | With fenced code block |
 | 6 | Legal triggers | Required |
+| 7 | Work Estimate | See Work Estimate contract above |
 
-### CHORE rubric (5 checks)
+### CHORE rubric (6 checks)
 
 | # | Check | Pattern |
 |---|---|---|
@@ -82,8 +111,9 @@ Each spec type has a base rubric. Items are binary PASS/FAIL. Score = PASS count
 | 3 | Acceptance Criteria | Standard |
 | 4 | Files | Standard |
 | 5 | Legal triggers | Required |
+| 6 | Work Estimate | See Work Estimate contract above |
 
-### REFACTOR rubric (9 checks)
+### REFACTOR rubric (10 checks)
 
 FEAT minus Game Theory, plus `## Migration Plan` with rollback procedure. Legal triggers inherited from FEAT base (not a separate addition).
 
@@ -98,10 +128,11 @@ FEAT minus Game Theory, plus `## Migration Plan` with rollback procedure. Legal 
 | 7 | Models Applied | `## Models Applied` H2 declaring required models + structural evidence |
 | 8 | Migration Plan | `## Migration Plan` H2 with phased steps + `### Rollback` subsection including explicit triggers |
 | 9 | Legal triggers | `## Legal triggers` H2 present |
+| 10 | Work Estimate | See Work Estimate contract above |
 
-### RESEARCH rubric (6 checks, inherited from v1.1 unchanged)
+### RESEARCH rubric (7 checks)
 
-Research specs produce decision-ready reports; they do not ship code, so Legal triggers is not a required section (reports are non-building by definition). RESEARCH stayed at 6 checks in v1.2.
+Research specs produce decision-ready reports; they do not ship code, so Legal triggers is not a required section (reports are non-building by definition). RESEARCH stayed at 6 checks through v1.2/v1.3; v1.4.0 added the Work Estimate check like every other building type, bringing it to 7.
 
 | # | Check | Pattern |
 |---|---|---|
@@ -111,8 +142,9 @@ Research specs produce decision-ready reports; they do not ship code, so Legal t
 | 4 | Report Format | `## Report Format` H2 describing output structure |
 | 5 | Subject Migration Summary | Standard |
 | 6 | Files | `## Files` H2 with fenced code block |
+| 7 | Work Estimate | See Work Estimate contract above |
 
-### UX / BRAND rubric (6 checks)
+### UX / BRAND rubric (7 checks)
 
 | # | Check | Pattern |
 |---|---|---|
@@ -122,6 +154,7 @@ Research specs produce decision-ready reports; they do not ship code, so Legal t
 | 4 | Acceptance Criteria | Standard |
 | 5 | Assets / Files | With fenced code block |
 | 6 | Legal triggers | Required |
+| 7 | Work Estimate | See Work Estimate contract above |
 
 ---
 
@@ -426,6 +459,7 @@ OpenAPI at `zai.htu.io/openapi.json`.
 | 1.3 | 2026-04-20 | Enterprise disclosure footer rendered on `.scored.md` output for specs carrying any trigger bundle (`healthcare`, `fintech`, `financial_advisory`, `legal_services`, `government`). Canonical text sourced from `docs/brand/enterprise-disclosure.md`; drift-detection test asserts verbatim equality. Rendering lives in the output layer (`src/lib/renderScoredSpec.ts`), not the scoring engine — `ScoreResult` shape unchanged. No rubric count changes. Part of the ZiLin Brand Migration REFACTOR Phase 1 (2026-04-19). |
 | 1.3.1 | 2026-04-20 | Per-type Intent word caps (was uniform 150 with CHORE exception at 100). SPEC 250, REFACTOR 250, RESEARCH 200 — these types must frame actors/scope/deferrals, carry trigger + reversibility caveat, or set up context for research questions. FEAT/BUG/UX/BRAND unchanged at 150; CHORE unchanged at 100. `INTENT_CAPS` lookup in `scoreSpec.ts` replaces the previous flat constant. Drift-detection test extended with an Intent-cap column in the Appendix table. Error message on cap violation now names the cap, spec type, and suggests relocation or decomposition. Additive liberalization — no previously passing spec regresses. Also tightens the BUG/HOTFIX Intent check, which was previously loose (no cap enforced); per docs the cap has always been 150, so this aligns code to doc. Closes #51. |
 | 1.4.0 | 2026-05-01 | Mandatory `## Work Estimate` section added to **all 9** building rubrics (FEAT, BUG, HOTFIX, SPEC, CHORE, REFACTOR, RESEARCH, UX, BRAND). Detector validates: H2 present, `### Active operator time` table with Phase + Estimate columns and Total row, `### Wall-clock time` table with Wait dependency + Estimate columns and Total row, `### Assumptions` subsection with ≥1 bullet, `### Actuals (filled post-execution)` table with Phase, Estimate, Actual, Delta column headers. Rubric check counts: FEAT 9→10, BUG 7→8, HOTFIX 7→8, SPEC 6→7, CHORE 5→6, REFACTOR 9→10, RESEARCH 6→7, UX 6→7, BRAND 6→7. Backward compat: pre-v1.4.0 scored specs grandfathered (their stored scores stand); specs scored at v1.4.0 or later require the section. The parent SPEC PR (zzv.io #35) lists 7 spec types; the implementation covers 9 because the codebase has HOTFIX and RESEARCH rubrics in addition to the 7 documented. The SPEC also stated REFACTOR's pre-change count as 7, but the actual rubric had 9 — informational mismatch documented in the implementation PR. |
+| 1.5.0 | 2026-08-30 | BUG #124: the primary §2 rubric tables and headings were never updated when `work_estimate` shipped in v1.4.0 (only the Appendix and changelog mentioned it), so an author satisfying every §2-documented check still landed on PARTIAL. Every §2 heading and table (FEAT/FEATURE, BUG/HOTFIX, SPEC, CHORE, REFACTOR, RESEARCH, UX/BRAND) now carries the correct check count and a Work Estimate row, and §2 opens with the full source-confirmed Work Estimate contract (headings, subsections, table columns, Total-row and minimum-row rules, and what is explicitly *not* enforced) instead of leaving it to the Appendix. `checkWorkEstimate` (`src/lib/scoreSpec.ts`) now aggregates every unmet sub-requirement into one FAIL reason instead of returning only the first, so iterative resubmission surfaces the whole contract in one round. `GET /api/v1/rubric/:type` is implemented as a real JSON endpoint (`functions/api/v1/rubric/[type].ts`, backed by `src/lib/rubricApi.ts`) instead of falling through to the SPA shell via `public/_redirects`. A new drift-detection suite parses the §2 headings/tables directly (not just the Appendix) so this class of doc-vs-code drift fails CI going forward. No rubric check content changed — this is documentation, diagnostics, and API-routing correction only; RUBRIC_VERSION stays semantically the same contract introduced in 1.4.0. Cross-repo authoring surfaces in `zi007lin/zzv-skills` (`draft_spec`, template-engine) that still advertise v1.4.0 are out of scope for this repo's PR — tracked as follow-up in that repo per this issue's Assumptions. |
 ```
 
 ---
@@ -454,4 +488,4 @@ Drift test implementation notes:
 
 ---
 
-*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.4.0*
+*End of ZAI_SYSTEM_INSTRUCTIONS.md v1.5.0*

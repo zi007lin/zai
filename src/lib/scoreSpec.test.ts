@@ -870,6 +870,84 @@ describe("drift-detection — scoreSpec vs ZAI_SYSTEM_INSTRUCTIONS.md §Appendix
   });
 });
 
+// ─── drift-detection — §2 primary rubric tables (BUG #124) ────────────────
+//
+// The §Appendix drift test above only guards the Appendix summary table —
+// it did not catch BUG #124, where `work_estimate` landed in v1.4.0 but the
+// primary "### X rubric (N checks)" headings and per-check tables in §2
+// (the table authors actually read) were never updated. This test parses
+// those §2 headings directly and asserts their counts match scoreSpec.ts,
+// closing the exact gap that let the two documents disagree.
+
+const SECTION2_HEADING_RE = /^###\s+([A-Z][A-Z /]*?)\s+rubric\s+\((\d+)\s+checks/gm;
+
+const SECTION2_HEADING_TO_TYPES: Record<string, SpecType[]> = {
+  "FEAT / FEATURE": ["feat"],
+  "BUG / HOTFIX": ["bug", "hotfix"],
+  SPEC: ["spec"],
+  CHORE: ["chore"],
+  REFACTOR: ["refactor"],
+  RESEARCH: ["research"],
+  "UX / BRAND": ["ux", "brand"],
+};
+
+interface Section2Entry {
+  heading: string;
+  count: number;
+}
+
+function parseSection2Headings(doc: string): Section2Entry[] {
+  const start = doc.search(/^##\s+2\)\s+Rubrics\s+by\s+spec\s+type/m);
+  const end = doc.search(/^##\s+3\)/m);
+  const slice = start === -1 ? doc : doc.slice(start, end === -1 ? undefined : end);
+  const entries: Section2Entry[] = [];
+  let match: RegExpExecArray | null;
+  const re = new RegExp(SECTION2_HEADING_RE);
+  while ((match = re.exec(slice)) !== null) {
+    entries.push({ heading: match[1].trim(), count: Number(match[2]) });
+  }
+  return entries;
+}
+
+describe("drift-detection — scoreSpec vs ZAI_SYSTEM_INSTRUCTIONS.md §2 primary tables", () => {
+  const docPath = resolve(__dirname, "../../docs/ZAI_SYSTEM_INSTRUCTIONS.md");
+  const doc = readFileSync(docPath, "utf8");
+  const entries = parseSection2Headings(doc);
+
+  it("finds all 7 §2 rubric headings", () => {
+    expect(entries.map((e) => e.heading)).toEqual(
+      Object.keys(SECTION2_HEADING_TO_TYPES),
+    );
+  });
+
+  it("every §2 heading count matches scoreSpec.ts for every type it covers", () => {
+    for (const entry of entries) {
+      const types = SECTION2_HEADING_TO_TYPES[entry.heading];
+      expect(types, `unrecognized §2 heading "${entry.heading}"`).toBeDefined();
+      for (const type of types) {
+        const implCount = RUBRIC_SECTION_KEYS[type].length;
+        expect(
+          implCount,
+          `§2 heading "${entry.heading}" says ${entry.count} checks, ` +
+            `but scoreSpec.ts has ${implCount} checks for "${type}"`,
+        ).toBe(entry.count);
+      }
+    }
+  });
+
+  it("every §2-covered type's rubric table includes a Work Estimate row", () => {
+    const start = doc.search(/^##\s+2\)\s+Rubrics\s+by\s+spec\s+type/m);
+    const end = doc.search(/^##\s+3\)/m);
+    const section2 = doc.slice(start, end === -1 ? undefined : end);
+    const tables = section2.split(/^###\s+/m).slice(1);
+    for (const table of tables) {
+      expect(table, `§2 table missing a Work Estimate row:\n${table.slice(0, 80)}...`).toMatch(
+        /Work Estimate/,
+      );
+    }
+  });
+});
+
 // ─── per-type Intent cap fixtures ────────────────────────────────────────
 //
 // Mirrors the fixture list in issues/2026-04-20__bug__intent-token-cap-per-type-v1
@@ -1328,6 +1406,36 @@ just a paragraph with no bullets at all.
     expect(r.section_reasons.work_estimate).toMatch(/Actuals.*missing required column headers/);
     expect(r.section_reasons.work_estimate).toMatch(/Actual/);
     expect(r.section_reasons.work_estimate).toMatch(/Delta/);
+  });
+
+  // BUG #124: an author fixing one failure at a time and resubmitting used
+  // to see only the next unmet requirement, never the full picture. A
+  // single scoreSpec() call over a Work Estimate section with multiple
+  // independent problems must surface every one of them at once.
+  it("aggregates every unmet sub-requirement into one response instead of stopping at the first", () => {
+    const md = withMutatedWorkEstimate(`
+## Work Estimate
+
+### Active operator time
+| Phase | Estimate | Notes |
+|---|---|---|
+| Phase A | 5 min | |
+
+### Assumptions
+just a paragraph with no bullets at all.
+`);
+    const r = scoreSpec(md, "2026-05-01__feat__we-10.md");
+    expect(r.sections.work_estimate).toBe("FAIL");
+    const reason = r.section_reasons.work_estimate ?? "";
+    // Active operator time: table present but no Total row and only 1 data row.
+    expect(reason).toMatch(/Active operator time.*Total row/);
+    expect(reason).toMatch(/Active operator time.*at least 1 phase row/);
+    // Wall-clock time subsection is missing entirely.
+    expect(reason).toMatch(/missing "### Wall-clock time" subsection/);
+    // Assumptions has no bullets.
+    expect(reason).toMatch(/Assumptions.*no bullets/);
+    // Actuals subsection is missing entirely.
+    expect(reason).toMatch(/missing "### Actuals \(filled post-execution\)" subsection/);
   });
 });
 
