@@ -13,7 +13,7 @@ import {
   type SpecType,
 } from "../lib/scoreSpec";
 import { renderScoredSpec } from "../lib/renderScoredSpec";
-import { SPEC_TEMPLATE } from "../lib/specTemplate";
+import { getSpecTemplate, templateFilename, type TemplateSpecType } from "../lib/specTemplate";
 import { parseRepoHeader } from "../lib/parseRepoHeader";
 
 function downloadBlob(filename: string, contents: string) {
@@ -132,8 +132,8 @@ export default function AppPage() {
     [filename, markdown, postScoreTelemetry],
   );
 
-  const handleDownloadTemplate = useCallback(() => {
-    downloadBlob("spec-template.md", SPEC_TEMPLATE);
+  const handleDownloadTemplate = useCallback((type: TemplateSpecType) => {
+    downloadBlob(templateFilename(type), getSpecTemplate(type));
   }, []);
 
   const handleDownloadScored = useCallback(() => {
