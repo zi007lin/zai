@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { TEMPLATE_TYPES, type TemplateSpecType } from "../lib/specTemplate";
 
 export type UploadState =
   | { kind: "preupload" }
@@ -8,7 +9,7 @@ export type UploadState =
 
 interface Props {
   onFile: (name: string, contents: string) => void;
-  onDownloadTemplate: () => void;
+  onDownloadTemplate: (type: TemplateSpecType) => void;
   state: UploadState;
 }
 
@@ -17,6 +18,7 @@ type DragState = "idle" | "dragging";
 export default function UploadZone({ onFile, onDownloadTemplate, state }: Props) {
   const [dragState, setDragState] = useState<DragState>("idle");
   const [fileTypeError, setFileTypeError] = useState<string | null>(null);
+  const [templateType, setTemplateType] = useState<TemplateSpecType>("feat");
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFiles = useCallback(
@@ -129,14 +131,26 @@ export default function UploadZone({ onFile, onDownloadTemplate, state }: Props)
         >
           Score a spec
         </button>
-        <button
-          type="button"
-          onClick={onDownloadTemplate}
-          className="flex-1 px-4 py-2.5 rounded-md border border-[var(--zai-border)] text-neutral-200 hover:bg-[var(--zai-border)]/40 transition-colors"
-          style={{ fontFamily: "var(--font-sans-zai)" }}
-        >
-          Download template ↓
-        </button>
+        <div className="flex flex-1">
+          <label className="sr-only" htmlFor="template-type">Template type</label>
+          <select
+            id="template-type"
+            aria-label="Template type"
+            value={templateType}
+            onChange={(event) => setTemplateType(event.target.value as TemplateSpecType)}
+            className="rounded-l-md border border-r-0 border-[var(--zai-border)] bg-[var(--zai-card)] px-2 text-neutral-200"
+          >
+            {TEMPLATE_TYPES.map((type) => <option key={type} value={type}>{type.toUpperCase()}</option>)}
+          </select>
+          <button
+            type="button"
+            onClick={() => onDownloadTemplate(templateType)}
+            className="flex-1 px-3 py-2.5 rounded-r-md border border-[var(--zai-border)] text-neutral-200 hover:bg-[var(--zai-border)]/40 transition-colors"
+            style={{ fontFamily: "var(--font-sans-zai)" }}
+          >
+            Download template ↓
+          </button>
+        </div>
       </div>
 
       <input
