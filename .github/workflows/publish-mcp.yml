@@ -1,0 +1,76 @@
+name: Publish @htu/zai-mcp
+
+# Manual-trigger only. Does NOT auto-publish on merge or tag — the npm
+# scope @htu must be registered manually first, and a wrong publish leaves
+# a permanent shadow on the registry. The PR-time job below validates that
+# the package builds and packs cleanly so this workflow is ready when
+# called.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0). Must match packages/zai-mcp/package.json."
+        required: true
+        type: string
+      dry_run:
+        description: "Skip the actual npm publish — only run the build + pack."
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write  # for npm provenance, when enabled
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/zai-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install (root, with workspaces)
+        working-directory: .
+        run: npm ci
+
+      - name: Verify version matches input
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PKG_VERSION" != "${{ inputs.version }}" ]; then
+            echo "::error::package.json version ($PKG_VERSION) does not match dispatch input (${{ inputs.version }})"
+            exit 1
+          fi
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test
+
+      - name: Pack (always — verifies the tarball)
+        run: npm pack --dry-run
+
+      - name: Publish
+        if: ${{ inputs.dry_run == false }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_PUBLISH_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Publish summary"
+            echo ""
+            echo "- Package: \`@htu/zai-mcp\`"
+            echo "- Version: \`${{ inputs.version }}\`"
+            echo "- Dry run: \`${{ inputs.dry_run }}\`"
+            echo "- Outcome: \`${{ job.status }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"

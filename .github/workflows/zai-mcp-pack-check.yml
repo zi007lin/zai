@@ -1,0 +1,47 @@
+name: zai-mcp pack check
+
+# PR-time validation: build + test + pack-dry-run for the zai-mcp package
+# only when its files change. Catches packaging issues (missing bin entry,
+# wrong files glob, broken tsup output) before merge, not at publish time.
+on:
+  pull_request:
+    paths:
+      - "packages/zai-mcp/**"
+      - "src/lib/scoreSpec.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/zai-mcp-pack-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/zai-mcp/**"
+      - "src/lib/scoreSpec.ts"
+
+permissions:
+  contents: read
+
+jobs:
+  pack-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/zai-mcp
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install (root, with workspaces)
+        working-directory: .
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm run test
+
+      - name: Pack dry-run
+        run: npm pack --dry-run

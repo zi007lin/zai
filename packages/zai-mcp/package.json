@@ -1,0 +1,56 @@
+{
+  "name": "@htu/zai-mcp",
+  "version": "0.1.0",
+  "description": "MCP server exposing ZAI's score_spec tool over stdio. Demo subset (#80).",
+  "license": "MIT",
+  "author": "ZiLin <noreply@zzv.io>",
+  "homepage": "https://github.com/zi007lin/zai/tree/main/packages/zai-mcp",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zi007lin/zai.git",
+    "directory": "packages/zai-mcp"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "bin": {
+    "zai-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "DEMO.md",
+    "examples"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "prepack": "npm run build",
+    "pack:dry": "npm pack --dry-run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.2",
+    "vitest": "^4.1.4"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "zai",
+    "spec-driven-development",
+    "anthropic",
+    "claude"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
